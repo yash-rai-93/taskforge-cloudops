@@ -130,7 +130,7 @@ for(const name of fs.readdirSync('/proc')) {
   console.log('PASS: worker crash recovery, fresh dependency heartbeat and subsequent job processing');
 
   assert.ok(process.env.SMOKE_STATE_FILE, 'SMOKE_STATE_FILE must be outside the repository');
-  writeFileSync(process.env.SMOKE_STATE_FILE, JSON.stringify({ email, password, taskTitle: task.title, projectName: project.name }), { mode: 0o600 });
+  writeFileSync(process.env.SMOKE_STATE_FILE, JSON.stringify({ email, password, taskTitle: task.title, projectName: project.name, projectId: project.id }), { mode: 0o600 });
 } catch (error) {
   // exec errors can include captured logs; expose only the sanitized message category.
   console.error(error.code && error.code !== 'ERR_ASSERTION' ? `Container command failed (${error.code}); inspect bounded service diagnostics` : error.message);
