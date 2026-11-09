@@ -10,15 +10,19 @@ It includes organization-based multi-tenancy, role-based access control, Kanban 
 
 This repository is [yash-rai-93/taskforge-cloudops](https://github.com/yash-rai-93/taskforge-cloudops),
 using [engmaryamameen/TaskForge](https://github.com/engmaryamameen/TaskForge) as its starter.
-The application features and screenshots below are inherited. Our work currently covers
-ownership, environment and deployment-configuration preparation; an independent AWS
-deployment has **not** been verified and there is no assessment deployment URL yet.
+The application features and screenshots below are inherited. Our assessment work
+adds independent configuration, dependency remediation and complete containerization.
+An AWS deployment URL has not been verified.
 
-See [the configuration audit](docs/VEGAH_CONFIGURATION_AUDIT.md) for changes, environment
-variables, validation evidence, and the next Docker/CI/CD dependencies.
-The production Compose file is preparatory: frontend orchestration, worker image builds,
-HTTPS, automated deployment and end-to-end worker demonstration remain unfinished.
-Planned GHCR packages are not claimed to exist.
+**Run the entire application:** `docker compose up -d --build --wait --wait-timeout 180`
+
+Open **http://localhost:8080** and use the local verification inbox at
+**http://localhost:8025** after registration. No real email account is needed.
+
+See [container operations and architecture](docs/CONTAINERS.md) for services,
+production preparation, environment settings, host development and verification.
+The [configuration audit](docs/VEGAH_CONFIGURATION_AUDIT.md) records the preceding
+milestone. Three-image GHCR publishing, HTTPS and AWS deployment remain upcoming.
 
 ---
 
@@ -170,14 +174,14 @@ TaskForge/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 20+
+- Node.js 22+ (for host development; Docker includes Node)
 - PostgreSQL 16+
 - Redis 7+
 
 ### Backend Setup
 
 For host-based development, start PostgreSQL and Redis using the local Compose file
-from the repository root (`docker compose up -d postgres redis`), or use your own local
+from the repository root (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis mailpit`), or use your own local
 services. The support-service ports bind to loopback only. Local passwords and JWT
 examples are synthetic and must never be used for a public deployment.
 
@@ -214,7 +218,7 @@ npm run dev                   # Start on port 3001
 - Frontend development: copy `frontend/.env.local.example` to `frontend/.env.local`.
 - Future EC2 preparation: copy `.env.production.example` to `.env.production`, set
   file permissions to `600`, and fill the required blanks privately. Do not run the
-  production stack until the deferred Docker work and image publishing are complete.
+  production stack until all three images are published and private configuration is ready.
 
 NestJS expects the existing `DB_*`, `REDIS_*`, `JWT_SECRET`, `FRONTEND_URL`, and optional
 integration keys. Production Compose requires database/Redis passwords and a JWT secret;
@@ -222,11 +226,10 @@ it provides no default production credentials or `latest` image tag.
 `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SOCKET_URL` are public **build-time** origins;
 changing a running container's environment does not change the browser bundle.
 Neither origin should include `/api/v1` or `/socket.io`. Empty values currently use
-localhost, not same-origin routing. See the audit's variable table for the full contract.
+the browser origin through Nginx. See the container guide for the full contract.
 
-Stripe can be left blank to disable paid billing. SMTP can be blank for startup, but
-new users must verify their email before logging in: public signup requires configured
-email delivery. Do not use or publish verification/reset links from preview logs.
+Stripe can be left blank to disable paid billing. Local Compose uses Mailpit for signup verification. Production
+signup requires configured email delivery; no Mailpit inbox is included there. Do not use or publish verification/reset links from preview logs.
 
 ---
 
