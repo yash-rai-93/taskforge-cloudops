@@ -62,7 +62,7 @@ let privateValues = [];
     rmSync(process.env.SMOKE_STATE_FILE, { force: true });
   }
 })().catch(error => {
-  let message = String(error.message).replace(/eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+/g, '[redacted token]');
+  let message = String(error.message).replace(/eyJ[A-Za-z0-9_-]+[.][A-Za-z0-9_-]+[.][A-Za-z0-9_-]+/g, '[redacted token]');
   for (const value of privateValues) if (value) message = message.split(value).join('[redacted]');
   console.error(`Browser smoke check failed at ${stage}: ${message.slice(0, 1800)}`);
   process.exitCode = 1;
