@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+dist
+.git
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+coverage
+*.log

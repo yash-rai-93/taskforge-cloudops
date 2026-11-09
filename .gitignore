@@ -1,5 +1,18 @@
-# Production secrets
-.env.production
+# Local and production secrets (examples are safe to track)
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+# Deliberate, synthetic test fixture; never use for deployment.
+!backend/.env.test
+*.pem
+*.key
+*.p12
+*.pfx
+*.tfstate
+*.tfstate.*
+*.tfvars
 
 # Deploy history
 .deploy-history

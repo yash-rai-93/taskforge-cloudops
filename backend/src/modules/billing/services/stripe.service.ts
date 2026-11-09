@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { IBillingProvider } from '../interfaces/billing-provider.interface';
@@ -6,17 +6,27 @@ import { IBillingProvider } from '../interfaces/billing-provider.interface';
 @Injectable()
 export class StripeService implements IBillingProvider {
   private readonly logger = new Logger(StripeService.name);
-  private readonly stripe: InstanceType<typeof Stripe>;
+  private readonly stripe?: InstanceType<typeof Stripe>;
   private readonly webhookSecret: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.stripe = new Stripe(
-      this.configService.get<string>('billing.stripeSecretKey', ''),
-    );
+    const apiKey = this.configService.get<string>('billing.stripeSecretKey', '');
+    if (apiKey) this.stripe = new Stripe(apiKey);
     this.webhookSecret = this.configService.get<string>(
       'billing.stripeWebhookSecret',
       '',
     );
+  }
+
+  get enabled(): boolean {
+    return !!this.stripe;
+  }
+
+  private get client(): InstanceType<typeof Stripe> {
+    if (!this.stripe) {
+      throw new ServiceUnavailableException('Stripe billing is not configured');
+    }
+    return this.stripe;
   }
 
   async createCustomer(
@@ -24,7 +34,7 @@ export class StripeService implements IBillingProvider {
     name: string,
     metadata: Record<string, string>,
   ): Promise<{ id: string }> {
-    const customer = await this.stripe.customers.create({
+    const customer = await this.client.customers.create({
       email,
       name,
       metadata,
@@ -38,7 +48,7 @@ export class StripeService implements IBillingProvider {
     priceId: string,
     urls: { success: string; cancel: string },
   ): Promise<{ url: string }> {
-    const session = await this.stripe.checkout.sessions.create({
+    const session = await this.client.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
@@ -52,7 +62,7 @@ export class StripeService implements IBillingProvider {
     customerId: string,
     returnUrl: string,
   ): Promise<{ url: string }> {
-    const session = await this.stripe.billingPortal.sessions.create({
+    const session = await this.client.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
     });
@@ -60,7 +70,7 @@ export class StripeService implements IBillingProvider {
   }
 
   constructWebhookEvent(rawBody: Buffer, signature: string): any {
-    return this.stripe.webhooks.constructEvent(
+    return this.client.webhooks.constructEvent(
       rawBody,
       signature,
       this.webhookSecret,
@@ -68,6 +78,6 @@ export class StripeService implements IBillingProvider {
   }
 
   async fetchSubscription(subscriptionId: string): Promise<any> {
-    return this.stripe.subscriptions.retrieve(subscriptionId);
+    return this.client.subscriptions.retrieve(subscriptionId);
   }
 }

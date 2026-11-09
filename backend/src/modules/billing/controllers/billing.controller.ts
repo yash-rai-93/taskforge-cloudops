@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BillingService } from '../services/billing.service';
 import { SubscriptionService } from '../services/subscription.service';
 import { UsageService } from '../services/usage.service';
@@ -17,6 +18,7 @@ export class BillingController {
     private readonly subscriptionService: SubscriptionService,
     private readonly usageService: UsageService,
     private readonly planRepository: PlanRepository,
+    private readonly configService: ConfigService,
   ) {}
 
   @OrgScoped()
@@ -60,7 +62,7 @@ export class BillingController {
   @Roles(Role.ADMIN)
   @Post('portal-session')
   async createPortalSession(@CurrentUser() user: RequestContext) {
-    const frontendUrl = 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>('billing.frontendUrl');
     return this.billingService.createPortalSession(
       user.organizationId!,
       `${frontendUrl}/billing`,

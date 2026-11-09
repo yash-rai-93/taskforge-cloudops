@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-HISTORY_FILE=".deploy-history"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
+HISTORY_FILE=".deploy-history"
 
 if [ ! -f "$HISTORY_FILE" ]; then
     echo "ERROR: No deploy history found at $HISTORY_FILE"
