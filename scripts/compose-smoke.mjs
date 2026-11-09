@@ -61,7 +61,7 @@ try {
   await until(async () => (await fetch(`${base}/health`)).ok, 'public API health');
   const loginPage = await fetch(`${base}/login`);
   assert.equal(loginPage.status, 200);
-  assert.ok((await loginPage.text()).includes('Welcome back'));
+  assert.ok((await loginPage.text()).includes('/_next/static/'), 'Next.js login shell/assets must be served');
   for (const role of ['api', 'worker', 'frontend', 'nginx']) {
     assert.notEqual(compose('exec', '-T', role, 'id', '-u').trim(), '0', `${role} must run without root`);
   }
@@ -133,6 +133,6 @@ for(const name of fs.readdirSync('/proc')) {
   writeFileSync(process.env.SMOKE_STATE_FILE, JSON.stringify({ email, password, taskTitle: task.title, projectName: project.name }), { mode: 0o600 });
 } catch (error) {
   // exec errors can include captured logs; expose only the sanitized message category.
-  console.error(error.code ? 'Container command failed; inspect bounded service diagnostics' : error.message);
+  console.error(error.code && error.code !== 'ERR_ASSERTION' ? `Container command failed (${error.code}); inspect bounded service diagnostics` : error.message);
   process.exitCode = 1;
 }

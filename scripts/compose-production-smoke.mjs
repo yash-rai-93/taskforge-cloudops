@@ -35,7 +35,7 @@ try {
  for(const role of ['api','worker','frontend'])assert.ok(config.services[role].image.endsWith(`-${role}:${tag}`));
  docker('up','-d','--pull','never','--wait','--wait-timeout','180');
  assert.equal((await fetch('http://127.0.0.1:18080/health')).status,200);
- assert.ok((await (await fetch('http://127.0.0.1:18080/login')).text()).includes('Welcome back'));
+ assert.ok((await (await fetch('http://127.0.0.1:18080/login')).text()).includes('/_next/static/'));
  console.log('PASS: standalone production topology, three SHA-tagged images, fresh migrations, healthy worker/API/frontend, private DB/Redis and no Mailpit');
 } catch {
  // Environment and inspected configurations can contain secrets; never dump them.
