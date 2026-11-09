@@ -376,7 +376,7 @@ Client -> Next.js -> NestJS API
 
 Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) before submitting a pull request.
 
-See the [open issues](https://github.com/engmaryamameen/TaskForge/issues) for a list of known issues and planned features.
+See the [open issues](https://github.com/yash-rai-93/taskforge-cloudops/issues) for a list of known issues and planned features.
 
 ---
 
