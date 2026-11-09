@@ -2,22 +2,23 @@
 
 # TaskForge — Multi-Tenant SaaS Project Management Platform
 
-TaskForge is a production-grade SaaS project management platform built with **Next.js, NestJS, PostgreSQL, Redis, Socket.IO, Stripe, Docker, and CI/CD**.
+TaskForge is an open-source SaaS project management starter built with **Next.js, NestJS, PostgreSQL, Redis, Socket.IO, Stripe, Docker, and CI/CD**.
 
 It includes organization-based multi-tenancy, role-based access control, Kanban task management, real-time notifications, email workflows, billing architecture, and a polished dashboard UI.
 
-## Live Demo
+## VEGAH assessment preparation
 
-**Demo:** [https://task-forge-demo.vercel.app](https://task-forge-demo.vercel.app)
+This repository is [yash-rai-93/taskforge-cloudops](https://github.com/yash-rai-93/taskforge-cloudops),
+using [engmaryamameen/TaskForge](https://github.com/engmaryamameen/TaskForge) as its starter.
+The application features and screenshots below are inherited. Our work currently covers
+ownership, environment and deployment-configuration preparation; an independent AWS
+deployment has **not** been verified and there is no assessment deployment URL yet.
 
-### Demo Account
-
-| Field | Value |
-|---|---|
-| **Email** | `demo@taskforge.com` |
-| **Password** | `Demo@12345` |
-
-> The demo account has sample projects, tasks, members, notifications, and dashboard data pre-loaded.
+See [the configuration audit](docs/VEGAH_CONFIGURATION_AUDIT.md) for changes, environment
+variables, validation evidence, and the next Docker/CI/CD dependencies.
+The production Compose file is preparatory: frontend orchestration, worker image builds,
+HTTPS, automated deployment and end-to-end worker demonstration remain unfinished.
+Planned GHCR packages are not claimed to exist.
 
 ---
 
@@ -175,10 +176,15 @@ TaskForge/
 
 ### Backend Setup
 
+For host-based development, start PostgreSQL and Redis using the local Compose file
+from the repository root (`docker compose up -d postgres redis`), or use your own local
+services. The support-service ports bind to loopback only. Local passwords and JWT
+examples are synthetic and must never be used for a public deployment.
+
 ```bash
 cd backend
 cp .env.example .env          # Edit with your credentials
-npm install
+npm ci
 npm run migration:run         # Create database tables
 npm run start:dev             # Start API on port 3000
 npm run start:worker:dev      # Start background worker (separate terminal)
@@ -189,7 +195,7 @@ npm run start:worker:dev      # Start background worker (separate terminal)
 ```bash
 cd frontend
 cp .env.local.example .env.local
-npm install
+npm ci
 npm run dev                   # Start on port 3001
 ```
 
@@ -204,49 +210,23 @@ npm run dev                   # Start on port 3001
 
 ## Environment Variables
 
-### Backend (.env)
+- Backend host development: copy `backend/.env.example` to `backend/.env`.
+- Frontend development: copy `frontend/.env.local.example` to `frontend/.env.local`.
+- Future EC2 preparation: copy `.env.production.example` to `.env.production`, set
+  file permissions to `600`, and fill the required blanks privately. Do not run the
+  production stack until the deferred Docker work and image publishing are complete.
 
-```bash
-# Server
-PORT=3000
-NODE_ENV=development
+NestJS expects the existing `DB_*`, `REDIS_*`, `JWT_SECRET`, `FRONTEND_URL`, and optional
+integration keys. Production Compose requires database/Redis passwords and a JWT secret;
+it provides no default production credentials or `latest` image tag.
+`NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SOCKET_URL` are public **build-time** origins;
+changing a running container's environment does not change the browser bundle.
+Neither origin should include `/api/v1` or `/socket.io`. Empty values currently use
+localhost, not same-origin routing. See the audit's variable table for the full contract.
 
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_NAME=taskforge
-
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Auth
-JWT_SECRET=your-secret-key-at-least-32-characters-long
-ACCESS_TOKEN_TTL=15m
-REFRESH_TOKEN_TTL=7d
-
-# Email (SMTP) - Optional, logs emails when not configured
-SMTP_HOST=localhost
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM=TaskForge <noreply@taskforge.io>
-
-# Stripe (optional in development)
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-FRONTEND_URL=http://localhost:3001
-```
-
-### Frontend (.env.local)
-
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:3000
-NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
-```
+Stripe can be left blank to disable paid billing. SMTP can be blank for startup, but
+new users must verify their email before logging in: public signup requires configured
+email delivery. Do not use or publish verification/reset links from preview logs.
 
 ---
 
@@ -262,7 +242,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
-SMTP_FROM=TaskForge <noreply@yourdomain.com>
+SMTP_FROM=TaskForge <noreply@example.com>
 ```
 
 ### Testing with Mailtrap/Ethereal
@@ -374,7 +354,7 @@ Client -> Next.js -> NestJS API
 
 ## Contributing
 
-Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) before submitting a pull request.
+Use a feature branch and a focused pull request for configuration changes. Do not commit live environment files or credentials.
 
 See the [open issues](https://github.com/yash-rai-93/taskforge-cloudops/issues) for a list of known issues and planned features.
 
@@ -382,4 +362,5 @@ See the [open issues](https://github.com/yash-rai-93/taskforge-cloudops/issues) 
 
 ## License
 
-MIT
+[MIT](LICENSE), Copyright (c) 2026 engmaryamameen. Original starter attribution and
+permission notice are retained; assessment-specific changes are documented separately.
