@@ -4,9 +4,16 @@ const assert = require('node:assert/strict');
 const { readFileSync, rmSync } = require('node:fs');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE);
 let stage = 'initialization';
+let privateValues = [];
 (async () => {
   const state = JSON.parse(readFileSync(process.env.SMOKE_STATE_FILE, 'utf8'));
+  privateValues = [state.password, state.email];
   const base = process.env.SMOKE_BASE_URL || 'http://127.0.0.1:8080';
+  function onExpectedOrigin(value) {
+    const actual = new URL(value);
+    actual.protocol = actual.protocol.replace(/^ws/, 'http');
+    return actual.origin === new URL(base).origin;
+  }
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
@@ -14,11 +21,11 @@ let stage = 'initialization';
     let upgrade;
     const upgraded = new Promise(resolve => { upgrade = resolve; });
     page.on('websocket', socket => {
-      if (!socket.url().startsWith(base.replace(/^http/, 'ws'))) external.push(true);
+      if (!onExpectedOrigin(socket.url())) external.push(true);
       socket.on('framereceived', frame => { if (frame.payload === '3probe') upgrade(); });
     });
     page.on('request', request => {
-      if (['xhr','fetch','websocket'].includes(request.resourceType()) && !request.url().startsWith(base)) external.push(true);
+      if (['xhr','fetch','websocket'].includes(request.resourceType()) && !onExpectedOrigin(request.url())) external.push(true);
     });
     stage = 'browser login';
     await page.goto(`${base}/login`);
@@ -47,10 +54,16 @@ let stage = 'initialization';
     await page.goto(`${base}/activity`);
     await page.getByRole('heading', { name: 'Activity', exact: true }).waitFor();
     await page.getByText(title, { exact: false }).first().waitFor({ timeout: 30000 });
+    stage = 'same-origin network assertions';
     assert.equal(external.length, 0, 'browser API/socket requests must use the public proxy origin');
     console.log('PASS: browser login, WebSocket upgrade, task creation, worker result UI and same-origin requests');
   } finally {
     await browser.close();
     rmSync(process.env.SMOKE_STATE_FILE, { force: true });
   }
-})().catch(() => { console.error(`Browser smoke check failed at ${stage} (credentials and page contents withheld)`); process.exitCode = 1; });
+})().catch(error => {
+  let message = String(error.message).replace(/eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+/g, '[redacted token]');
+  for (const value of privateValues) if (value) message = message.split(value).join('[redacted]');
+  console.error(`Browser smoke check failed at ${stage}: ${message.slice(0, 1800)}`);
+  process.exitCode = 1;
+});
