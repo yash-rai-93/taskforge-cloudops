@@ -67,7 +67,68 @@ milestone. Three-image GHCR publishing, HTTPS and AWS deployment remain upcoming
 
 ![Projects grid](screenshots/dashboard/projects.png)
 
-**Project detail** — Single project header with board/ta…467 tokens truncated…*Backend** | NestJS 11, TypeScript |
+**Project detail** — Single project header with board/table switcher and Kanban columns.
+
+![Project detail board view](screenshots/dashboard/project-detail.png)
+
+### Organization Members
+
+**Organizations** — Active workspace, metadata, and team access summary.
+
+![Organizations workspace](screenshots/dashboard/organization.png)
+
+**Team roster** — Members and pending invitations with role badges.
+
+![Team members and invitations](screenshots/dashboard/organization-2.png)
+
+**Invite member** — Modal with email, role, and send invitation.
+
+![Invite member modal](screenshots/dashboard/send-invitation.png)
+
+### Real-Time Notifications
+
+![Notification dropdown](screenshots/dashboard/notifications.png)
+
+### Authentication
+
+Split-panel auth with shared branding.
+
+![Login](screenshots/auth/login.png)
+
+![Create workspace — registration](screenshots/auth/register.png)
+
+![Forgot password](screenshots/auth/forgot-password.png)
+
+### Mobile & Responsive
+
+![Mobile dashboard](screenshots/mobile-view/dashboard.png)
+![Mobile project list](screenshots/mobile-view/project-list.png)
+![Mobile project detail](screenshots/mobile-view/project-detail.png)
+![Mobile organizations](screenshots/mobile-view/organization.png)
+
+---
+
+## Use TaskForge as a Reference For
+
+- Building multi-tenant SaaS apps
+- Structuring a Next.js + NestJS monorepo
+- Implementing organization-based RBAC
+- Adding real-time notifications with Socket.IO
+- Designing project/task management workflows
+- Integrating Stripe billing architecture
+- Setting up Docker and CI/CD for full-stack apps
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS 4 |
+| **State** | Zustand (client state), TanStack React Query (server state) |
+| **Realtime Client** | Socket.IO Client |
+| **Drag & Drop** | dnd-kit |
+| **Backend** | NestJS 11, TypeScript |
 | **Database** | PostgreSQL 16, TypeORM |
 | **Cache** | Redis 7, ioredis |
 | **Queue** | BullMQ (separate worker process) |
