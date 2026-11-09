@@ -2,7 +2,8 @@ import { Module, Global } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis';
-import { QueueService, ACTIVITY_QUEUE, NOTIFICATIONS_QUEUE } from './queue.service';
+import { QueueService } from './queue.service';
+import { ACTIVITY_QUEUE, NOTIFICATIONS_QUEUE, PROJECT_REPORT_QUEUE, PROJECT_REPORT_QUEUE_NAME } from './queue.constants';
 import { QUEUE_SERVICE } from './queue.interface';
 
 @Global()
@@ -21,10 +22,15 @@ import { QUEUE_SERVICE } from './queue.interface';
         new Queue('notifications', { connection: redis, prefix: 'bull' }),
     },
     {
+      provide: PROJECT_REPORT_QUEUE,
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: Redis) => new Queue(PROJECT_REPORT_QUEUE_NAME, { connection: redis, prefix: 'bull' }),
+    },
+    {
       provide: QUEUE_SERVICE,
       useClass: QueueService,
     },
   ],
-  exports: [QUEUE_SERVICE, ACTIVITY_QUEUE, NOTIFICATIONS_QUEUE],
+  exports: [QUEUE_SERVICE, ACTIVITY_QUEUE, NOTIFICATIONS_QUEUE, PROJECT_REPORT_QUEUE],
 })
 export class QueueProducerModule {}

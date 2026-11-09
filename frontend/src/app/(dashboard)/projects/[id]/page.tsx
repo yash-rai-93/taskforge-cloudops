@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Role, TaskStatus, TaskPriority } from '@/types';
+import { ProjectReportPanel } from '@/features/reports/project-report-panel';
 import { formatTaskStatus, formatTaskPriority } from '@/lib/utils';
 
 export default function ProjectDetailPage({
@@ -147,6 +148,8 @@ export default function ProjectDetailPage({
           </div>
         )}
       </div>
+
+      <ProjectReportPanel key={id} projectId={id} />
 
       {/* Tasks section */}
       <div className="mb-4 flex items-center justify-between">

@@ -2,8 +2,8 @@ import { Injectable, Inject, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { IQueueService, JobOptions } from './queue.interface';
 
-export const ACTIVITY_QUEUE = 'ACTIVITY_QUEUE';
-export const NOTIFICATIONS_QUEUE = 'NOTIFICATIONS_QUEUE';
+import { ACTIVITY_QUEUE, NOTIFICATIONS_QUEUE, PROJECT_REPORT_QUEUE } from './queue.constants';
+export { ACTIVITY_QUEUE, NOTIFICATIONS_QUEUE } from './queue.constants';
 
 @Injectable()
 export class QueueService implements IQueueService, OnModuleDestroy {
@@ -12,6 +12,7 @@ export class QueueService implements IQueueService, OnModuleDestroy {
   constructor(
     @Inject(ACTIVITY_QUEUE) private readonly activityQueue: Queue,
     @Inject(NOTIFICATIONS_QUEUE) private readonly notificationsQueue: Queue,
+    @Inject(PROJECT_REPORT_QUEUE) private readonly reportsQueue: Queue,
   ) {}
 
   async addJob<T>(name: string, data: T, opts?: JobOptions): Promise<void> {
@@ -39,6 +40,6 @@ export class QueueService implements IQueueService, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    await Promise.all([this.activityQueue.close(), this.notificationsQueue.close()]);
+    await Promise.all([this.activityQueue.close(), this.notificationsQueue.close(), this.reportsQueue.close()]);
   }
 }

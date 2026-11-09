@@ -1,8 +1,9 @@
 # TaskForge container operations
 
 TaskForge's original Next.js/NestJS application and MIT attribution are retained.
-This milestone adds complete Compose orchestration and makes the existing activity
-feed a real asynchronous worker result. No cloud infrastructure is provisioned.
+The container milestone adds complete Compose orchestration and makes the existing
+activity feed a real asynchronous worker result. [Project summary jobs](BACKGROUND_JOBS.md)
+also expose explicit job status, progress, retry/failure and summary results. No cloud infrastructure is provisioned.
 
 ## Start the whole local application
 
@@ -56,7 +57,7 @@ checked against that origin. The public proxy has no direct database access.
 | --- | --- | --- |
 | frontend | `frontend/Dockerfile` -> `taskforge-local-frontend` | edge; Node HTTP check on `/login` |
 | api | `backend/Dockerfile` -> `taskforge-local-api` | edge + internal data; checks PostgreSQL/Redis through `/api/v1/health` |
-| worker | `backend/Dockerfile.worker` -> `taskforge-local-worker` | internal data; fresh heartbeat requires a running BullMQ consumer, Redis PING and SQL SELECT 1 |
+| worker | `backend/Dockerfile.worker` -> `taskforge-local-worker` | internal data; fresh heartbeat requires both running BullMQ consumers, Redis PING and SQL SELECT 1 |
 | migrate | Reuses API image, overrides command | internal data; one-shot TypeORM migrations must exit 0 before API/worker start |
 | postgres | `postgres:16-alpine` | internal data; pg_isready, persistent pgdata volume |
 | redis | `redis:7-alpine` | internal data; authenticated PING, persistent redisdata volume |
@@ -105,7 +106,7 @@ is claimed in this milestone.
 
 The worker loads complete TypeORM relation metadata even though it imports fewer
 business modules than the API. It writes a dependency heartbeat into `/tmp` only
-while queue consumption and both dependencies are healthy. Queue clients and the
+while both activity/report consumers and both dependencies are healthy. Queue clients and the
 consumer close before the shared Redis connection quits. A 30-second termination
 grace period allows ordinary jobs to finish before SIGKILL.
 

@@ -57,6 +57,9 @@ let privateValues = [];
     stage = 'same-origin network assertions';
     assert.equal(external.length, 0, 'browser API/socket requests must use the public proxy origin');
     console.log('PASS: browser login, WebSocket upgrade, task creation, worker result UI and same-origin requests');
+    stage = 'project report lifecycle';
+    await require('./report-jobs-browser.cjs')({ page, base, state });
+    assert.equal(external.length, 0, 'report API requests must stay on the proxy origin');
   } finally {
     await browser.close();
     rmSync(process.env.SMOKE_STATE_FILE, { force: true });

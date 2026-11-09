@@ -21,6 +21,10 @@ Open **http://localhost:8080** and use the local verification inbox at
 
 See [container operations and architecture](docs/CONTAINERS.md) for services,
 production preparation, environment settings, host development and verification.
+Open a project and use **Project summary** to see a Redis/BullMQ job's real status,
+progress, retries and result. See [background jobs](docs/BACKGROUND_JOBS.md) for API,
+retention, security and a short walkthrough sequence.
+
 The [configuration audit](docs/VEGAH_CONFIGURATION_AUDIT.md) records the preceding
 milestone. Three-image GHCR publishing, HTTPS and AWS deployment remain upcoming.
 
