@@ -66,8 +66,8 @@ try {
     assert.notEqual(compose('exec', '-T', role, 'id', '-u').trim(), '0', `${role} must run without root`);
   }
   let noAuth;
-  try { compose('exec', '-T', 'redis', 'sh', '-c', 'unset REDISCLI_AUTH; redis-cli -e ping'); }
-  catch (error) { noAuth = String(error.stdout); }
+  try { noAuth = compose('exec', '-T', 'redis', 'sh', '-c', 'unset REDISCLI_AUTH; redis-cli ping'); }
+  catch (error) { noAuth = String(error.stdout || '') + String(error.stderr || ''); }
   assert.ok(noAuth?.includes('NOAUTH'), 'Redis must reject unauthenticated requests');
   console.log('PASS: frontend/proxy/API readiness, non-root application containers, Redis authentication');
 
