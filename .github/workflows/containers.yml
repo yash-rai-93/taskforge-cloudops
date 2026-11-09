@@ -1,0 +1,58 @@
+name: Container integration
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: containers-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  compose:
+    name: Full-stack Compose smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMPOSE_PROJECT_NAME: taskforge-ci-${{ github.run_id }}
+      COMPOSE_SMOKE_TEST: 'true'
+      FRONTEND_URL: http://127.0.0.1:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: docker/setup-buildx-action@v3
+      - name: Set disposable test state path
+        run: echo "SMOKE_STATE_FILE=$RUNNER_TEMP/taskforge-smoke.json" >> "$GITHUB_ENV"
+      - name: Validate and build all three application images
+        run: |
+          docker compose config --quiet
+          docker compose build api worker frontend
+      - name: Start complete application
+        id: stack
+        run: docker compose up -d --wait --wait-timeout 180
+      - name: Verify connectivity, jobs, persistence and crash recovery
+        run: node scripts/compose-smoke.mjs
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/browser-smoke" playwright@1.65.0 --no-audit --no-fund
+          "$RUNNER_TEMP/browser-smoke/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify actual browser frontend
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/browser-smoke/node_modules/playwright
+        run: node scripts/compose-browser.cjs
+      - name: Verify production Compose with locally built SHA images
+        if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' }}
+        run: node scripts/compose-production-smoke.mjs
+      - name: Bounded diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --tail 60 api worker migrate frontend nginx mailpit
+      - name: Remove disposable containers and data
+        if: always()
+        run: |
+          docker compose down -v --remove-orphans
+          rm -f "$SMOKE_STATE_FILE"

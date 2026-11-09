@@ -38,7 +38,7 @@ async function bootstrap() {
   app.useGlobalFilters(new AppExceptionFilter());
   app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
-  app.enableCors();
+  app.enableCors({ origin: process.env.FRONTEND_URL || 'http://localhost:3001' });
 
   // Required so Socket.IO attaches to the same HTTP server as REST (fixes ws:// connection failures).
   app.useWebSocketAdapter(new IoAdapter(app));

@@ -1,91 +1,200 @@
+# Local stack only: synthetic development credentials; never expose publicly.
+name: taskforge-local
 x-backend-env: &backend-env
-  NODE_ENV: development
-  PORT: "3000"
+  NODE_ENV: production
+  PORT: '3000'
   DB_HOST: postgres
-  DB_PORT: "5432"
-  DB_USERNAME: postgres
-  DB_PASSWORD: postgres
-  DB_NAME: taskforge
+  DB_PORT: '5432'
+  DB_USERNAME: ${DB_USERNAME:-postgres}
+  DB_PASSWORD: ${DB_PASSWORD:-postgres}
+  DB_NAME: ${DB_NAME:-taskforge}
+  DB_SSL: 'false'
+  DB_SSL_REJECT_UNAUTHORIZED: 'true'
   REDIS_HOST: redis
-  REDIS_PORT: "6379"
-  JWT_SECRET: docker-dev-secret-change-me-at-least-32-chars
-  ACCESS_TOKEN_TTL: 15m
-  REFRESH_TOKEN_TTL: 7d
-  STRIPE_SECRET_KEY: ""
-  STRIPE_WEBHOOK_SECRET: ""
-  STRIPE_PRICE_ID_PRO: ""
-  STRIPE_PRICE_ID_ENTERPRISE: ""
-  FRONTEND_URL: http://localhost:3001
-
+  REDIS_PORT: '6379'
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-local-redis-only}
+  REDIS_TLS: 'false'
+  JWT_SECRET: ${JWT_SECRET:-local-only-secret-at-least-32-characters}
+  ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+  REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-7d}
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+  SMTP_ENABLED: 'true'
+  SMTP_HOST: mailpit
+  SMTP_PORT: '1025'
+  SMTP_SECURE: 'false'
+  SMTP_USER: ''
+  SMTP_PASS: ''
+  SMTP_FROM: ${SMTP_FROM:-TaskForge <noreply@example.com>}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
+  STRIPE_PRICE_ID_ENTERPRISE: ${STRIPE_PRICE_ID_ENTERPRISE:-}
+x-app-defaults: &app-defaults
+  restart: unless-stopped
+  init: true
+  read_only: true
+  cap_drop:
+  - ALL
+  security_opt:
+  - no-new-privileges:true
+  tmpfs:
+  - /tmp:rw,noexec,nosuid,size=64m
+  stop_grace_period: 30s
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '3'
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: taskforge
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "127.0.0.1:5432:5432"
+      POSTGRES_DB: ${DB_NAME:-taskforge}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+    - pgdata:/var/lib/postgresql/data
+    networks:
+    - data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d taskforge"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
       interval: 5s
       timeout: 3s
-      retries: 5
-
+      retries: 10
   redis:
     image: redis:7-alpine
-    ports:
-      - "127.0.0.1:6379:6379"
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-local-redis-only}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-local-redis-only}
+    command:
+    - sh
+    - -c
+    - exec redis-server --appendonly yes --appendfsync everysec --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"
+    volumes:
+    - redisdata:/data
+    networks:
+    - data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+      - CMD
+      - redis-cli
+      - ping
       interval: 5s
       timeout: 3s
-      retries: 5
-
+      retries: 10
   migrate:
+    <<: *app-defaults
+    restart: 'no'
+    image: taskforge-local-api
     build:
       context: ./backend
-    command: ["node", "dist/run-migrations.js"]
-    environment:
-      <<: *backend-env
+      dockerfile: Dockerfile
+    command:
+    - node
+    - scripts/migrate-prod.cjs
+    environment: *backend-env
+    networks:
+    - data
     depends_on:
       postgres:
         condition: service_healthy
-    restart: "no"
-
+    healthcheck:
+      disable: true
   api:
+    <<: *app-defaults
+    image: taskforge-local-api
     build:
       context: ./backend
-    command: ["node", "dist/main"]
-    ports:
-      - "127.0.0.1:3000:3000"
-    environment:
-      <<: *backend-env
+      dockerfile: Dockerfile
+    environment: *backend-env
+    networks:
+    - edge
+    - data
     depends_on:
       migrate:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+  worker:
+    <<: *app-defaults
+    image: taskforge-local-worker
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    environment: *backend-env
+    networks:
+    - data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+  frontend:
+    <<: *app-defaults
+    tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+    - /app/.next/cache:rw,nosuid,uid=1000,gid=1000,size=64m
+    image: taskforge-local-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-}
+    networks:
+    - edge
+    depends_on:
+      api:
+        condition: service_healthy
+  nginx:
+    <<: *app-defaults
+    image: nginxinc/nginx-unprivileged:1.28-alpine
+    ports:
+    - 127.0.0.1:${APP_PORT:-8080}:8080
+    volumes:
+    - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+    - edge
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+      frontend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/v1/health || exit 1"]
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8080/health
       interval: 10s
-      timeout: 3s
+      timeout: 5s
       retries: 5
       start_period: 15s
-
-  worker:
-    build:
-      context: ./backend
-    command: ["node", "dist/worker"]
-    environment:
-      <<: *backend-env
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
-
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    restart: unless-stopped
+    networks:
+    - edge
+    ports:
+    - 127.0.0.1:${MAILPIT_PORT:-8025}:8025
+    healthcheck:
+      test:
+      - CMD
+      - /mailpit
+      - readyz
+      interval: 5s
+      timeout: 3s
+      retries: 10
 volumes:
-  pgdata:
+  pgdata: {}
+  redisdata: {}
+networks:
+  edge: {}
+  data:
+    internal: true

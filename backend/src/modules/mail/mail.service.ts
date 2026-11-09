@@ -45,13 +45,13 @@ export class MailService {
     this.from = this.configService.get<string>('mail.from', 'TaskForge <noreply@taskforge.io>');
     this.frontendUrl = this.configService.get<string>('mail.frontendUrl', 'http://localhost:3001');
 
-    this.enabled = !!user && !!pass;
+    this.enabled = this.configService.get<boolean>('mail.enabled', !!user && !!pass);
 
     this.transporter = nodemailer.createTransport({
       host,
       port,
       secure,
-      ...(this.enabled ? { auth: { user, pass } } : {}),
+      ...(user && pass ? { auth: { user, pass } } : {}),
     });
 
     if (!this.enabled) {

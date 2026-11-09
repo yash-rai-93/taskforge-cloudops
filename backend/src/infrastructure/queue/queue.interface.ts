@@ -5,6 +5,7 @@ export interface IQueueService {
 }
 
 export interface JobOptions {
+  jobId?: string;
   delay?: number;
   attempts?: number;
   priority?: number;

@@ -21,6 +21,7 @@ export class ActivityService {
     }
 
     await this.activityRepository.create({
+      id: event.eventId,
       organizationId: event.organizationId,
       eventType: event.type,
       entityType,

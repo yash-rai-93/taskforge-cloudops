@@ -1,5 +1,8 @@
 # VEGAH configuration audit
 
+> Historical configuration milestone. Containerization supersedes the deferred Docker,
+> routing, queue, SMTP and origin behavior below. See [current container operations](CONTAINERS.md).
+
 ## Scope and provenance
 
 Audited base: `31a9fd6a4ef39147c6f7bde21186215d2451a0d3`, branch `main`,

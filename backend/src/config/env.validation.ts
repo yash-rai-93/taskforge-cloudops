@@ -37,6 +37,7 @@ export const envValidationSchema = Joi.object({
   FRONTEND_URL: Joi.string().default('http://localhost:3001'),
 
   // Email (SMTP) — env vars are strings; mail.config uses SMTP_SECURE === 'true'
+  SMTP_ENABLED: Joi.string().valid('true', 'false').optional(),
   SMTP_HOST: Joi.string().optional().default('localhost'),
   SMTP_PORT: Joi.number().optional().default(587),
   SMTP_SECURE: Joi.string().valid('true', 'false', '1', '0', '').optional().allow(''),
