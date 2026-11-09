@@ -358,16 +358,3 @@ Client -> Next.js -> NestJS API
 - Background worker processes audit log asynchronously
 
 ---
-
-## Contributing
-
-Use a feature branch and a focused pull request for configuration changes. Do not commit live environment files or credentials.
-
-See the [open issues](https://github.com/yash-rai-93/taskforge-cloudops/issues) for a list of known issues and planned features.
-
----
-
-## License
-
-[MIT](LICENSE), Copyright (c) 2026 engmaryamameen. Original starter attribution and
-permission notice are retained; assessment-specific changes are documented separately.
