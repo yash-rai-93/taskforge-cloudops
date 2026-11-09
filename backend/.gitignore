@@ -8,8 +8,10 @@ build/
 
 # Environment
 .env
+.env.*
 !.env.test
 !.env.example
+!.env.*.example
 
 # IDE
 .idea/

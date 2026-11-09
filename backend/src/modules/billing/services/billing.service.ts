@@ -36,6 +36,9 @@ export class BillingService {
     creatorEmail: string,
     orgName: string,
   ): Promise<void> {
+    // Core workspace features use the existing free entitlements without Stripe.
+    if (!this.stripeService.enabled) return;
+
     // Check if billing already exists (idempotent)
     const existing =
       await this.subscriptionService.ensureBillingExists(organizationId);

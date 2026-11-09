@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Always resolve repository files from this script, not the caller's directory.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
 COMPOSE_FILE="docker-compose.prod.yml"
 ENV_FILE=".env.production"
 HISTORY_FILE=".deploy-history"
@@ -8,7 +11,12 @@ HEALTH_URL="http://localhost/health"
 MAX_RETRIES=30
 RETRY_INTERVAL=2
 
-TAG="${1:-latest}"
+# The future frontend / worker builds must exist before this helper is usable.
+TAG="${1:-}"
+if [[ ! "$TAG" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "ERROR: Supply a full 40-character lowercase commit SHA (no latest/default tag)."
+    exit 1
+fi
 
 echo "==> Deploying TaskForge with tag: $TAG"
 
@@ -18,12 +26,18 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# Update TAG in env file
-if grep -q "^TAG=" "$ENV_FILE"; then
-    sed -i "s/^TAG=.*/TAG=$TAG/" "$ENV_FILE"
-else
-    echo "TAG=$TAG" >> "$ENV_FILE"
-fi
+# This inherited helper deploys a single release SHA across all image contracts.
+# Mixed-version automatic rollback and frontend verification remain future work.
+for IMAGE_TAG_KEY in API_IMAGE_TAG WORKER_IMAGE_TAG FRONTEND_IMAGE_TAG; do
+    if grep -q "^${IMAGE_TAG_KEY}=" "$ENV_FILE"; then
+        sed -i "s/^${IMAGE_TAG_KEY}=.*/${IMAGE_TAG_KEY}=$TAG/" "$ENV_FILE"
+    else
+        echo "${IMAGE_TAG_KEY}=$TAG" >> "$ENV_FILE"
+    fi
+done
+
+# Validate without displaying the resolved environment or secrets.
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" config --quiet
 
 # Pull images
 echo "==> Pulling images..."

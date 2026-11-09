@@ -1,42 +1,65 @@
-x-backend-image: &backend-image
-  image: ghcr.io/yash-rai-93/taskforge-backend:${TAG:-latest}
+# Preparation only: frontend service, dedicated worker build, HTTPS and full CD
+# remain Docker/CI phase dependencies. These names are not verified published.
+x-api-image: &api-image
+  image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-api:${API_IMAGE_TAG:?Set API_IMAGE_TAG to a full commit SHA}
+
+x-worker-image: &worker-image
+  image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-worker:${WORKER_IMAGE_TAG:?Set WORKER_IMAGE_TAG to a full commit SHA}
+
+# Planned image contract; deliberately no frontend service until its Dockerfile exists.
+x-frontend-image:
+  image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-frontend:${FRONTEND_IMAGE_TAG:?Set FRONTEND_IMAGE_TAG to a full commit SHA}
 
 x-backend-env: &backend-env
   NODE_ENV: production
   PORT: "3000"
   DB_HOST: postgres
   DB_PORT: "5432"
-  DB_USERNAME: ${DB_USERNAME}
-  DB_PASSWORD: ${DB_PASSWORD}
-  DB_NAME: ${DB_NAME}
+  DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME}
+  DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+  DB_NAME: ${DB_NAME:?Set DB_NAME}
+  DB_SSL: "false"
+  DB_SSL_REJECT_UNAUTHORIZED: "true"
   REDIS_HOST: redis
   REDIS_PORT: "6379"
-  JWT_SECRET: ${JWT_SECRET}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+  REDIS_TLS: "false"
+  JWT_SECRET: ${JWT_SECRET:?Set a unique JWT_SECRET of at least 32 characters}
   ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
   REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-7d}
-  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
   STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
   STRIPE_PRICE_ID_ENTERPRISE: ${STRIPE_PRICE_ID_ENTERPRISE:-}
-  FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+  FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL to your public HTTPS origin}
+  SMTP_HOST: ${SMTP_HOST:-localhost}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASS: ${SMTP_PASS:-}
+  SMTP_FROM: ${SMTP_FROM:-TaskForge <noreply@example.com>}
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME:?Set DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
       timeout: 3s
       retries: 5
 
   redis:
     image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -44,7 +67,7 @@ services:
       retries: 5
 
   migrate:
-    <<: *backend-image
+    <<: *api-image
     command: ["node", "dist/run-migrations.js"]
     environment:
       <<: *backend-env
@@ -54,7 +77,7 @@ services:
     restart: "no"
 
   api:
-    <<: *backend-image
+    <<: *api-image
     command: ["node", "dist/main"]
     environment:
       <<: *backend-env
@@ -71,7 +94,7 @@ services:
       start_period: 15s
 
   worker:
-    <<: *backend-image
+    <<: *worker-image
     command: ["node", "dist/worker"]
     environment:
       <<: *backend-env
