@@ -15,7 +15,7 @@
     "start:worker:dev": "nest start --watch --entryFile worker",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "ci:local": "npm run lint:check && npm audit --audit-level=high && npm test && npm run build && node scripts/verify-build.mjs",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
