@@ -3,6 +3,7 @@
 // Run after npm run build. Uses compiled services and local doubles only:
 // no PostgreSQL, Redis, SMTP, Stripe or AWS calls, and no real credentials.
 const assert = require('node:assert/strict');
+const nodemailer = require('nodemailer');
 const { ConfigService } = require('@nestjs/config');
 const { Test } = require('@nestjs/testing');
 const { StripeService } = require('../dist/modules/billing/services/stripe.service');
@@ -46,6 +47,50 @@ async function main() {
   mail.transporter.sendMail = () => { throw new Error('SMTP must not send when disabled'); };
   await mail.sendPasswordResetEmail({ to: 'test@example.com', token: 'synthetic-only' });
 
+  // Exercise the upgraded mailer's real message compilation without an SMTP server.
+  // Configured application paths must retain sender, recipient and frontend links.
+  const configuredMail = new MailService(new ConfigService({ mail: {
+    user: 'synthetic-user', pass: 'synthetic-password',
+    from: 'TaskForge <sender@example.com>', frontendUrl: 'https://assessment.example.com',
+  } }));
+  assert.equal(configuredMail.enabled, true);
+  configuredMail.logger = mail.logger;
+  const transport = nodemailer.createTransport({ jsonTransport: true });
+  const messages = [];
+  configuredMail.transporter = {
+    async sendMail(options) {
+      const info = await transport.sendMail(options);
+      messages.push(JSON.parse(info.message));
+      return info;
+    },
+  };
+  await configuredMail.sendVerifyEmail({
+    to: 'test@example.com', firstName: 'Test', token: 'synthetic-only',
+  });
+  await configuredMail.sendPasswordResetEmail({
+    to: 'test@example.com', token: 'synthetic-only',
+  });
+  await configuredMail.sendInvitationEmail({
+    recipientEmail: 'test@example.com', organizationName: 'Test workspace',
+    role: 'member', inviteToken: 'synthetic-only',
+  });
+  await configuredMail.sendTaskAssignedEmail({
+    recipientEmail: 'test@example.com', taskTitle: 'Test task', organizationName: 'Test workspace',
+    priority: 'medium', taskId: 'synthetic-task',
+  });
+  const paths = [
+    '/auth/verify-email?token=synthetic-only', '/auth/reset-password?token=synthetic-only',
+    '/invite/synthetic-only', '/tasks',
+  ];
+  assert.equal(messages.length, paths.length);
+  messages.forEach((message, index) => {
+    assert.equal(message.from.address, 'sender@example.com');
+    assert.equal(message.to[0].address, 'test@example.com');
+    assert.ok(message.text.includes(`https://assessment.example.com${paths[index]}`));
+    assert.ok(message.html.includes(`https://assessment.example.com${paths[index]}`));
+  });
+  transport.close();
+
   const base = {
     NODE_ENV: 'production', DB_HOST: 'postgres', DB_USERNAME: 'taskforge',
     DB_PASSWORD: 'synthetic-fixture-only', DB_NAME: 'taskforge', REDIS_HOST: 'redis',
@@ -58,7 +103,7 @@ async function main() {
   }
   assert.ok(envValidationSchema.validate({ ...base, JWT_SECRET: 'too-short' }).error);
   await module.close();
-  console.log('PASS: optional Stripe/SMTP construction, disabled integration guards, required env validation');
+  console.log('PASS: optional integrations, four configured email templates, required env validation');
 }
 main().catch(error => {
   console.error(error.message);

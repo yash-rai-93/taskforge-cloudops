@@ -30,6 +30,10 @@ jobs:
 
       - run: npm audit --audit-level=high
 
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+        working-directory: frontend
+
   test:
     name: Tests
     runs-on: ubuntu-latest

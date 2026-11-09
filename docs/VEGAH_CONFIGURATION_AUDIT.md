@@ -14,7 +14,8 @@ migrations, Redis/cache, queue classes, worker entry point, Socket.IO, SMTP/bill
 backend Dockerfile, Compose, Nginx, CI and deployment/rollback scripts.
 This change prepares ownership and configuration; it does not deliver an AWS
 installation, complete containerization or the assessment's end-to-end worker flow.
-No cloud resources were created and no application images were built or published.
+No cloud resources were created and no application images were published by this PR.
+PR CI can build the API image without publishing; frontend/worker builds remain deferred.
 
 ## Findings and disposition
 
@@ -121,7 +122,8 @@ and never include them in screenshots, PRs, walkthroughs or public monitoring.
 
 ## GitHub secrets and AWS settings
 
-Current CI needs only the automatically supplied `GITHUB_TOKEN`; package writes are
+Current CI audits both backend and frontend dependency locks at the unchanged
+`--audit-level=high` threshold. It needs only the automatically supplied `GITHUB_TOKEN`; package writes are
 scoped to the Docker job, GHCR login/push only runs on main pushes, and PRs build
 without login/push. Backend quality/test/build gates are retained; a configuration
 regression check is added after build. Frontend/worker publishing and all CD remain
@@ -160,12 +162,15 @@ docker compose --env-file .env.production -f docker-compose.prod.yml config --qu
 
 Validation performed for this change:
 
-- `npm ci` completed in backend and frontend; package/lockfiles were not changed.
+- Clean `npm ci` completed in backend and frontend after the dependency remediation
+  described below; both package manifests and lockfiles are intentionally updated.
 - Backend lint, TypeScript build, compiled output verification (main/worker plus
   seven migrations), and compiled configuration regression assertions passed.
   The assertions exercise Nest dependency injection without a Stripe key,
   disabled Stripe calls before networking, configured SDK construction, disabled
   billing initialization, disabled SMTP delivery and missing/short required env.
+  Configured verification/reset/invitation/task-assignment email templates also
+  passed real Nodemailer JSON message compilation without SMTP/network delivery.
 - Frontend type check and full Next.js production build passed, including its
   lint/type stage and static page generation. No browser or backend integration test.
 - Existing `npm test -- --runInBand` exited 0 with **no tests found**. This is not
@@ -176,19 +181,57 @@ Validation performed for this change:
   DB/Redis port publication, local loopback bindings and local frontend origin.
   Each required production setting was omitted in turn and correctly rejected;
   the unfilled production example was rejected. Resolved secrets were not printed.
-- `npm audit --audit-level=high` **failed** on the inherited backend lockfile:
-  42 reported vulnerabilities (3 low, 25 moderate, 12 high, 2 critical).
-  No dependency upgrades or audit bypasses were made. The unchanged quality gate
-  will block image publishing until dependency remediation is reviewed and tested.
+- The initial inherited backend audit failed with 42 findings (3 low, 25 moderate,
+  12 high, 2 critical). Following remediation, `npm audit --audit-level=high`
+  passes for both applications: backend 29 findings (5 low, 24 moderate), frontend
+  6 moderate findings, **zero high/critical findings in either**. The initial
+  frontend baseline was 19 findings (7 moderate, 11 high, 1 critical).
+  These counts describe the registry advisory snapshot at validation, not a guarantee
+  of vulnerability-free software. No audit suppression, `--force`, or threshold change.
 - Git ignore, attribution, secret-pattern, shell syntax and final diff checks are
   recorded in the PR. Current-tree pattern checks are not proof that all secrets
   are absent from the complete Git history.
 
-Docker Engine is not installed. No containers, migration, authenticated Redis health
-probe, HTTP/WebSocket public routing, AWS permissions, registry pull/push or job flow
-were exercised. Compose interpolation validates configuration, not deployment.
-Local runtime used Node 24; workflow/Docker target Node 20, so CI remains necessary.
-Remote Actions success is not claimed by these local checks.
+Docker Engine is not installed locally. No application startup, migration,
+authenticated Redis health probe, HTTP/WebSocket public routing, AWS permissions,
+application registry publishing or job flow was exercised. Compose interpolation
+validates configuration, not deployment. Initial configuration checks used Node 24;
+dependency-remediation clean installs, backend lint/build/configuration checks and
+frontend type-check/build were rerun with **Node 20.20.2**, matching CI/Docker's Node
+20 target. Consult the PR checks for remote Actions results; local checks alone do
+not establish remote CI success.
+
+## Dependency audit remediation
+
+The previous combined Lint & Security job passed lint but failed its backend audit;
+Build and Docker Build & Push were skipped. This follow-up updates vulnerable
+packages and retains the quality gate. Frontend lockfile auditing is now also a
+step in that same job; it works without installing frontend dependencies there.
+
+- Refresh compatible locked dependencies, including Express/body-parser/proxy-addr,
+  Socket.IO's parser/Engine.IO/ws, Joi, BullMQ, TypeORM, Axios, Next.js and tooling.
+  Raise direct minimums for the affected API adapter, Joi, BullMQ, Axios and Next.js.
+- Upgrade Nodemailer 8 to **10.4.0**. Its bundled README/changelog specify Node 20+
+  and bundled TypeScript types; remove redundant `@types/nodemailer`. The application
+  uses supported CommonJS/createTransport/sendMail APIs. Version 9's stricter TLS
+  verification is preserved; no certificate-verification bypass is introduced.
+  Configured and disabled email paths are tested with synthetic inputs only;
+  actual provider credentials and SMTP delivery remain unverified.
+- Keep Next.js on **15.5.29** and align `eslint-config-next` to that version.
+  Next 15 pins an older PostCSS; a **scoped, same-major** override of its PostCSS
+  to `^8.5.32` removes the remaining high-severity advisory without a Next 16 migration.
+  The clean production build tests that compatibility. Review/remove the override
+  when a future Next release directly uses a sufficiently patched PostCSS.
+- Update `brace-expansion` within its compatible version ranges. No blanket
+  cross-major override of minimatch/glob and no forced framework downgrade/upgrade.
+
+Residual findings: backend includes low/moderate deepmerge, glob and minimatch
+chains through CLI/Jest/TypeScript lint tooling and **runtime TypeORM migration
+file discovery**; frontend's six moderate findings are in TypeScript ESLint/minimatch
+build tooling. Do not describe all residual backend findings as development-only.
+Review these separately before final submission/deployment, particularly any use
+of untrusted glob patterns or migration files. The `high` threshold is unchanged;
+it permits these lower-severity reports and does not suppress them.
 
 ## Next phase dependencies and optional improvements
 
@@ -196,7 +239,7 @@ Complete dedicated frontend/worker Dockerfiles and build contexts; wire frontend
 build-time origins; add frontend Compose service and reverse-proxy routing; validate
 API/migrations/authenticated Redis and local runtime dependencies inside containers.
 Publish all three images only after checks pass and test actual package permissions.
-Resolve dependency-audit blockers before publishing/deployment. Then implement the
+Review the residual lower-severity findings before final submission/deployment. Then implement the
 real worker demonstration, HTTPS, restart/health policies, backups/restore, constrained
 origins, OIDC/SSM or SSH deployment, rollback and CloudWatch with separately approved
 AWS resources/costs. Record the actual walkthrough in less than 180 seconds.
