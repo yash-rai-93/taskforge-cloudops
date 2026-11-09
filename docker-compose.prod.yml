@@ -1,118 +1,170 @@
-# Preparation only: frontend service, dedicated worker build, HTTPS and full CD
-# remain Docker/CI phase dependencies. These names are not verified published.
-x-api-image: &api-image
-  image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-api:${API_IMAGE_TAG:?Set API_IMAGE_TAG to a full commit SHA}
-
-x-worker-image: &worker-image
-  image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-worker:${WORKER_IMAGE_TAG:?Set WORKER_IMAGE_TAG to a full commit SHA}
-
-# Planned image contract; deliberately no frontend service until its Dockerfile exists.
-x-frontend-image:
-  image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-frontend:${FRONTEND_IMAGE_TAG:?Set FRONTEND_IMAGE_TAG to a full commit SHA}
-
+# Standalone production topology; configure secrets and publish SHA images first.
+name: taskforge-production
 x-backend-env: &backend-env
   NODE_ENV: production
-  PORT: "3000"
+  PORT: '3000'
   DB_HOST: postgres
-  DB_PORT: "5432"
+  DB_PORT: '5432'
   DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME}
   DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
   DB_NAME: ${DB_NAME:?Set DB_NAME}
-  DB_SSL: "false"
-  DB_SSL_REJECT_UNAUTHORIZED: "true"
+  DB_SSL: 'false'
+  DB_SSL_REJECT_UNAUTHORIZED: 'true'
   REDIS_HOST: redis
-  REDIS_PORT: "6379"
+  REDIS_PORT: '6379'
   REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
-  REDIS_TLS: "false"
-  JWT_SECRET: ${JWT_SECRET:?Set a unique JWT_SECRET of at least 32 characters}
+  REDIS_TLS: 'false'
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
   ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
   REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-7d}
-  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-  STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
-  STRIPE_PRICE_ID_ENTERPRISE: ${STRIPE_PRICE_ID_ENTERPRISE:-}
-  FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL to your public HTTPS origin}
+  FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL}
+  SMTP_ENABLED: ${SMTP_ENABLED:-false}
   SMTP_HOST: ${SMTP_HOST:-localhost}
   SMTP_PORT: ${SMTP_PORT:-587}
   SMTP_SECURE: ${SMTP_SECURE:-false}
   SMTP_USER: ${SMTP_USER:-}
   SMTP_PASS: ${SMTP_PASS:-}
   SMTP_FROM: ${SMTP_FROM:-TaskForge <noreply@example.com>}
-
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
+  STRIPE_PRICE_ID_ENTERPRISE: ${STRIPE_PRICE_ID_ENTERPRISE:-}
+x-app-defaults: &app-defaults
+  restart: unless-stopped
+  init: true
+  read_only: true
+  cap_drop:
+  - ALL
+  security_opt:
+  - no-new-privileges:true
+  tmpfs:
+  - /tmp:rw,noexec,nosuid,size=64m
+  stop_grace_period: 30s
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '3'
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:?Set DB_NAME}
       POSTGRES_USER: ${DB_USERNAME:?Set DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+    - pgdata:/var/lib/postgresql/data
+    networks:
+    - data
     healthcheck:
-      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
       interval: 5s
       timeout: 3s
-      retries: 5
-
+      retries: 10
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       REDISCLI_AUTH: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
-    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
+    command:
+    - sh
+    - -c
+    - exec redis-server --appendonly yes --appendfsync everysec --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"
+    volumes:
+    - redisdata:/data
+    networks:
+    - data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+      - CMD
+      - redis-cli
+      - ping
       interval: 5s
       timeout: 3s
-      retries: 5
-
+      retries: 10
   migrate:
-    <<: *api-image
-    command: ["node", "dist/run-migrations.js"]
-    environment:
-      <<: *backend-env
+    <<: *app-defaults
+    restart: 'no'
+    image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-api:${API_IMAGE_TAG:?Set API_IMAGE_TAG to a full commit SHA}
+    command:
+    - node
+    - scripts/migrate-prod.cjs
+    environment: *backend-env
+    networks:
+    - data
     depends_on:
       postgres:
         condition: service_healthy
-    restart: "no"
-
-  api:
-    <<: *api-image
-    command: ["node", "dist/main"]
-    environment:
-      <<: *backend-env
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/v1/health || exit 1"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 15s
-
-  worker:
-    <<: *worker-image
-    command: ["node", "dist/worker"]
-    environment:
-      <<: *backend-env
+      disable: true
+  api:
+    <<: *app-defaults
+    image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-api:${API_IMAGE_TAG:?Set API_IMAGE_TAG to a full commit SHA}
+    environment: *backend-env
+    networks:
+    - edge
+    - data
     depends_on:
       migrate:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  worker:
+    <<: *app-defaults
+    image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-worker:${WORKER_IMAGE_TAG:?Set WORKER_IMAGE_TAG to a full commit
+      SHA}
+    environment: *backend-env
+    networks:
+    - data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+  frontend:
+    <<: *app-defaults
+    tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+    - /app/.next/cache:rw,nosuid,uid=1000,gid=1000,size=64m
+    image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-frontend:${FRONTEND_IMAGE_TAG:?Set FRONTEND_IMAGE_TAG to a full
+      commit SHA}
+    networks:
+    - edge
     depends_on:
       api:
         condition: service_healthy
-
+  nginx:
+    <<: *app-defaults
+    image: nginxinc/nginx-unprivileged:1.28-alpine
+    ports:
+    - ${HTTP_PORT:-80}:8080
+    volumes:
+    - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+    - edge
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8080/health
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 volumes:
-  pgdata:
+  pgdata: {}
+  redisdata: {}
+networks:
+  edge: {}
+  data:
+    internal: true
