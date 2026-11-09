@@ -31,6 +31,7 @@ jobs:
           docker compose config --quiet
           docker compose build api worker frontend
       - name: Start complete application
+        id: stack
         run: docker compose up -d --wait --wait-timeout 180
       - name: Verify connectivity, jobs, persistence and crash recovery
         run: node scripts/compose-smoke.mjs
@@ -43,6 +44,7 @@ jobs:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/browser-smoke/node_modules/playwright
         run: node scripts/compose-browser.cjs
       - name: Verify production Compose with locally built SHA images
+        if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' }}
         run: node scripts/compose-production-smoke.mjs
       - name: Bounded diagnostics on failure
         if: failure()
