@@ -18,13 +18,14 @@ jobs:
       COMPOSE_PROJECT_NAME: taskforge-ci-${{ github.run_id }}
       COMPOSE_SMOKE_TEST: 'true'
       FRONTEND_URL: http://127.0.0.1:8080
-      SMOKE_STATE_FILE: ${{ runner.temp }}/taskforge-smoke.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - uses: docker/setup-buildx-action@v3
+      - name: Set disposable test state path
+        run: echo "SMOKE_STATE_FILE=$RUNNER_TEMP/taskforge-smoke.json" >> "$GITHUB_ENV"
       - name: Validate and build all three application images
         run: |
           docker compose config --quiet
