@@ -1,6 +1,10 @@
 import { registerAs } from '@nestjs/config';
 
 export const mailConfig = registerAs('mail', () => ({
+  // Explicit opt-in supports local unauthenticated SMTP (Mailpit).
+  enabled: process.env.SMTP_ENABLED === undefined
+    ? !!process.env.SMTP_USER && !!process.env.SMTP_PASS
+    : process.env.SMTP_ENABLED === 'true',
   host: process.env.SMTP_HOST || 'localhost',
   port: parseInt(process.env.SMTP_PORT || '587', 10),
   secure: process.env.SMTP_SECURE === 'true',

@@ -17,5 +17,7 @@ export function useActivity(params?: ActivityListParams) {
     queryKey: activityKeys.list(params),
     queryFn: () => activityApi.list(params).then((r) => r.data),
     enabled: hasValidOrgContext,
+    // Worker completion can follow the realtime task event by a few seconds.
+    refetchInterval: 5000,
   });
 }

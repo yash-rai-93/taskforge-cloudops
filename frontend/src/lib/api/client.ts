@@ -2,7 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/auth.store';
 import { updateToken as updateSocketToken } from '@/lib/socket';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+// Empty/unset means the browser's origin, routed through the reverse proxy.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,

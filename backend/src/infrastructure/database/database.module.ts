@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule, type TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { join } from 'node:path';
 
 @Module({
   imports: [
@@ -16,6 +17,9 @@ import { ConfigService } from '@nestjs/config';
           password: config.get<string>('database.password'),
           database: config.get<string>('database.database'),
           autoLoadEntities: true,
+          // The worker imports fewer feature modules, but relation metadata still
+          // needs every entity referenced by Activity (including User/Organization).
+          entities: [join(__dirname, '..', '..', '**', '*.entity.{ts,js}')],
           synchronize: false,
           logging: process.env.NODE_ENV === 'development',
         };

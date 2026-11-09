@@ -16,7 +16,11 @@ import { UsersService } from '../../users/services/users.service';
 import { MembershipsService } from '../../organizations/services/memberships.service';
 import { RealtimeService } from '../services/realtime.service';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({ cors: {
+  origin: (origin: string | undefined, callback: (error: Error | null, allow: boolean) => void) => {
+    callback(null, !origin || origin === (process.env.FRONTEND_URL || 'http://localhost:3001'));
+  },
+} })
 export class AppGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
@@ -48,10 +52,7 @@ export class AppGateway
     }
 
     try {
-      const secret = this.configService.get<string>(
-        'auth.jwtSecret',
-        'changeme',
-      );
+      const secret = this.configService.getOrThrow<string>('auth.jwtSecret');
       const decoded = this.jwtService.verify(token, { secret });
 
       const user = await this.usersService.findById(decoded.sub);

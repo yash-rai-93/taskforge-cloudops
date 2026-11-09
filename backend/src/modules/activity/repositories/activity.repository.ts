@@ -10,9 +10,9 @@ export class ActivityRepository {
     private readonly repo: Repository<Activity>,
   ) {}
 
-  async create(data: Partial<Activity>): Promise<Activity> {
-    const activity = this.repo.create(data);
-    return this.repo.save(activity);
+  async create(data: Partial<Activity>): Promise<void> {
+    // Retrying a job after a crash must not duplicate its audit row.
+    await this.repo.upsert(this.repo.create(data), ['id']);
   }
 
   async findByOrg(

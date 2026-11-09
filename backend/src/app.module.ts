@@ -62,6 +62,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
           process.env.NODE_ENV === 'development'
             ? { target: 'pino-pretty', options: { colorize: true } }
             : undefined,
+        redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
         autoLogging: true,
         quietReqLogger: true,
       },
