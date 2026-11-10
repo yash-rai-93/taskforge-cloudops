@@ -1,0 +1,8 @@
+aws_account_id    = "000000000000" # Replace privately with the expected account.
+aws_region        = "ap-south-1"
+availability_zone = "ap-south-1a"
+ubuntu_ami_id     = "ami-09d8c1e69d114dbf7"
+instance_type     = "t3.medium"
+data_volume_gib   = 20
+enable_public_web = false
+ssh_ipv4_cidrs    = []
