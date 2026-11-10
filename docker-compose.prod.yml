@@ -132,6 +132,9 @@ services:
     - /app/.next/cache:rw,nosuid,uid=1000,gid=1000,size=64m
     image: ${IMAGE_NAMESPACE:?Set IMAGE_NAMESPACE}-frontend:${FRONTEND_IMAGE_TAG:?Set FRONTEND_IMAGE_TAG to a full
       commit SHA}
+    environment:
+      PUBLIC_DEMO_EMAIL: ${PUBLIC_DEMO_EMAIL:-}
+      PUBLIC_DEMO_PASSWORD: ${PUBLIC_DEMO_PASSWORD:-}
     networks:
     - edge
     depends_on:
