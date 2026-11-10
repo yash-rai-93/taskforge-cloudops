@@ -1,0 +1,31 @@
+name: Production public smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/production-smoke.yml'
+
+permissions: {}
+
+jobs:
+  https:
+    name: Verify public HTTPS and application readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      PRODUCTION_ORIGIN: https://13.205.250.123
+    steps:
+      - name: Probe the deployed application without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            "$PRODUCTION_ORIGIN/health" |
+            jq -e '.data.status == "ok" and
+              .data.details.database.status == "up" and
+              .data.details.redis.status == "up"'
+          curl --fail --silent --show-error --max-time 20 \
+            --output /dev/null "$PRODUCTION_ORIGIN/login"
+          echo "Public HTTPS validated; login, PostgreSQL and Redis are reachable through the application."
