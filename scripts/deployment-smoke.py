@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 from deploy import Deployment, DeploymentError
 from release import bundle, ROLES
-from publish import publish_image
+from publish import archive_config_digest, publish_image
 
 if os.environ.get('COMPOSE_SMOKE_TEST') != 'true' or not os.environ.get('COMPOSE_PROJECT_NAME', '').startswith('taskforge-ci-'):
     raise SystemExit('Deployment tests require an isolated disposable CI project')
@@ -31,13 +31,15 @@ registry_name = project + '-registry'
 def docker(*args):
     return subprocess.check_output(['docker', *args], text=True, stderr=subprocess.STDOUT, timeout=240).strip()
 
+configs = {}
+
 def release(sha, broken=False):
     images = {}
     for role in ROLES:
         tag = f'{registry}/{repository}-{role}:{sha}'
         image = 'taskforge-delivery-broken' if broken and role == 'worker' else f'taskforge-local-{role}'
         docker('tag', image, tag)
-        digest = publish_image(tag)
+        digest = publish_image(tag, configs[image])
         images[role] = {'tag': tag, 'digest': f'{registry}/{repository}-{role}@{digest}'}
     path = root / 'releases' / sha
     bundle(source, path, {'schema':1, 'repository':repository, 'commit':sha, 'images':images}, registry=registry)
@@ -50,19 +52,26 @@ try:
     broken.mkdir()
     (broken / 'Dockerfile').write_text('FROM taskforge-local-worker\nHEALTHCHECK --interval=2s --timeout=1s --start-period=0s --retries=2 CMD exit 1\nCMD ["node", "-e", "process.exit(1)"]\n')
     docker('build', '-t', 'taskforge-delivery-broken', str(broken))
+    stage = 'image archive configuration digest'
+    for role in ROLES:
+        configs[f'taskforge-local-{role}'] = archive_config_digest(source / 'images' / f'{role}.tar')
+    archive = root / 'broken-worker.tar'
+    docker('image', 'save', '--output', str(archive), 'taskforge-delivery-broken')
+    configs['taskforge-delivery-broken'] = archive_config_digest(archive)
+    archive.unlink()
     stage = 'registry publication and immutability'
     first = release(os.environ['GITHUB_SHA'])
     api = json.loads((first / 'release.json').read_text())['images']['api']
-    assert publish_image(api['tag']) == api['digest'].split('@')[1]
+    assert publish_image(api['tag'], configs['taskforge-local-api']) == api['digest'].split('@')[1]
     docker('tag', 'taskforge-delivery-broken', api['tag'])
     try:
-        publish_image(api['tag'])
+        publish_image(api['tag'], configs['taskforge-delivery-broken'])
         raise AssertionError('Conflicting commit tag was accepted')
     except RuntimeError as error:
         assert 'Refusing to overwrite' in str(error)
     docker('tag', 'taskforge-local-api', api['tag'])
-    assert publish_image(api['tag']) == api['digest'].split('@')[1]
-    print('PASS: registry publication verified by digest and config ID, matching retries accepted, conflicting tags rejected', flush=True)
+    assert publish_image(api['tag'], configs['taskforge-local-api']) == api['digest'].split('@')[1]
+    print('PASS: registry publication verified by digest and image configuration digest, matching retries accepted, conflicting tags rejected', flush=True)
     stage = 'first release startup'
     deployment.execute(first)
     assert (root / 'current').resolve() == first
@@ -91,7 +100,8 @@ try:
     assert (root / 'current').resolve() == first
     print('PASS: second healthy release, previous-release tracking and manual application rollback', flush=True)
 except Exception as error:
-    print(f'Deployment integration failed during {stage} ({type(error).__name__}). Subprocess output withheld.', flush=True)
+    reason = str(error) if isinstance(error, RuntimeError) else type(error).__name__
+    print(f'Deployment integration failed during {stage}: {reason}', flush=True)
     raise SystemExit(1) from None
 finally:
     try:

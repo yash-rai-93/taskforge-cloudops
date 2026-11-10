@@ -1,19 +1,41 @@
 #!/usr/bin/env python3
 """Publish tested image archives. Called only after every CI gate succeeds on main."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import tarfile
 from release import ROLES
 
 def run(*command):
     return subprocess.check_output(command, text=True).strip()
 
-def publish_image(tag):
-    """Push a missing tag or verify an existing tag against the tested config ID."""
-    local_id = run('docker', 'image', 'inspect', tag, '--format', '{{.Id}}')
+def archive_config_digest(archive):
+    with tarfile.open(archive) as image:
+        manifests = json.load(image.extractfile('manifest.json'))
+        if len(manifests) != 1:
+            raise RuntimeError('Expected one platform image in the tested archive')
+        config = image.extractfile(manifests[0]['Config']).read()
+    return 'sha256:' + hashlib.sha256(config).hexdigest()
+
+def registry_config_digest(reference):
+    manifest = json.loads(run('docker', 'buildx', 'imagetools', 'inspect', reference, '--raw'))
+    if 'manifests' in manifest:
+        platforms = [item for item in manifest['manifests']
+                     if item.get('platform', {}).get('os') == 'linux'
+                     and item.get('platform', {}).get('architecture') == 'amd64']
+        if len(platforms) != 1:
+            raise RuntimeError('Expected one linux/amd64 registry manifest')
+        image = reference.rsplit('@', 1)[0]
+        manifest = json.loads(run('docker', 'buildx', 'imagetools', 'inspect',
+                                  f'{image}@{platforms[0]["digest"]}', '--raw'))
+    return manifest['config']['digest']
+
+def publish_image(tag, expected_config):
+    """Push a missing tag or verify an existing tag against the tested archive."""
     inspect = ['docker', 'buildx', 'imagetools', 'inspect', tag, '--format', '{{json .Manifest}}']
     try:
         remote = json.loads(subprocess.check_output(inspect, stderr=subprocess.DEVNULL, text=True))
@@ -24,8 +46,7 @@ def publish_image(tag):
     if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest):
         raise RuntimeError('Registry did not return an image digest')
     pinned = f'{tag.rsplit(":", 1)[0]}@{digest}'
-    raw = json.loads(run('docker', 'buildx', 'imagetools', 'inspect', pinned, '--raw'))
-    if raw.get('config', {}).get('digest') != local_id:
+    if registry_config_digest(pinned) != expected_config:
         raise RuntimeError('Registry digest does not match tested image. Refusing to overwrite the commit tag.')
     return digest
 
@@ -42,14 +63,15 @@ if __name__ == '__main__':
     # Validate the complete set before any push. Never silently retag/rebuild a missing image.
     references = {}
     for role in ROLES:
-        run('docker', 'load', '-i', str(args.images / f'{role}.tar'))
+        archive = args.images / f'{role}.tar'
+        run('docker', 'load', '-i', str(archive))
         tag = f'ghcr.io/{repository}-{role}:{sha}'
         labels = json.loads(run('docker', 'image', 'inspect', tag))[0]['Config']['Labels']
         if labels.get('org.opencontainers.image.revision') != sha or labels.get('org.opencontainers.image.source') != f'https://github.com/{repository}':
             raise SystemExit('Tested image labels do not match this repository/commit')
-        references[role] = tag
+        references[role] = (tag, archive_config_digest(archive))
     digests = {}
-    for role, tag in references.items():
-        digests[role] = publish_image(tag)
+    for role, (tag, config) in references.items():
+        digests[role] = publish_image(tag, config)
         print(f'Published/verified {tag} @ {digests[role]}', flush=True)
     args.digests.write_text(json.dumps(digests) + '\n')
