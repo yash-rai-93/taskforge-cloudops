@@ -59,7 +59,10 @@ shutil.rmtree(incoming)
 PY
 REMOTE_SCRIPT="$DEPLOY_ROOT/releases/$RELEASE_SHA/scripts/deploy.py"
 ssh "${SSH_OPTIONS[@]}" "$TARGET" "python3 -B '$REMOTE_SCRIPT' --root '$DEPLOY_ROOT' --repository '$REPOSITORY' --release '$DEPLOY_ROOT/releases/$RELEASE_SHA'"
-if ! curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 --max-time 15 "$PRODUCTION_URL/health" > /dev/null; then
+if ! HTTP_STATUS=$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 --max-time 15 \
+    --output "$PRIVATE_DIR/health.json" --write-out '%{http_code}' "$PRODUCTION_URL/health") ||
+    [[ "$HTTP_STATUS" != 200 ]] ||
+    ! python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(d.get("data",d).get("status") != "ok")' "$PRIVATE_DIR/health.json" 2>/dev/null; then
     echo 'Public HTTPS verification failed; attempting previous application release' >&2
     ssh "${SSH_OPTIONS[@]}" "$TARGET" "python3 -B '$REMOTE_SCRIPT' --root '$DEPLOY_ROOT' --repository '$REPOSITORY' --rollback"
     exit 1

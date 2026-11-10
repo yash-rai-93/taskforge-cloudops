@@ -65,6 +65,10 @@ class Deployment:
                     body = response.read(2_000_000)
                     if response.status != 200 or (path == '/login' and b'/_next/static/' not in body):
                         raise DeploymentError('Application HTTP verification failed')
+                    if path == '/health':
+                        result = json.loads(body)
+                        if result.get('data', result).get('status') != 'ok':
+                            raise DeploymentError('API dependency health verification failed')
         except (OSError, ValueError):
             raise DeploymentError('Application HTTP verification failed') from None
 
@@ -82,7 +86,6 @@ class Deployment:
 
     def deploy(self, release, migrate=True):
         release = Path(release).resolve()
-        self.config(release)  # Fail invalid manifests before changing anything.
         current = self.root / 'current'
         previous = current.resolve() if current.is_symlink() else None
         # Preparation/migration failures do not replace the running application.

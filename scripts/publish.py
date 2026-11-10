@@ -11,6 +11,24 @@ from release import ROLES
 def run(*command):
     return subprocess.check_output(command, text=True).strip()
 
+def publish_image(tag):
+    """Push a missing tag or verify an existing tag against the tested config ID."""
+    local_id = run('docker', 'image', 'inspect', tag, '--format', '{{.Id}}')
+    inspect = ['docker', 'buildx', 'imagetools', 'inspect', tag, '--format', '{{json .Manifest}}']
+    try:
+        remote = json.loads(subprocess.check_output(inspect, stderr=subprocess.DEVNULL, text=True))
+    except subprocess.CalledProcessError:
+        run('docker', 'push', tag)
+        remote = json.loads(run(*inspect))
+    digest = remote['digest']
+    if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest):
+        raise RuntimeError('Registry did not return an image digest')
+    pinned = f'{tag.rsplit(":", 1)[0]}@{digest}'
+    raw = json.loads(run('docker', 'buildx', 'imagetools', 'inspect', pinned, '--raw'))
+    if raw.get('config', {}).get('digest') != local_id:
+        raise RuntimeError('Registry digest does not match tested image. Refusing to overwrite the commit tag.')
+    return digest
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--images', type=Path, required=True)
@@ -32,25 +50,6 @@ if __name__ == '__main__':
         references[role] = tag
     digests = {}
     for role, tag in references.items():
-        # Commit tags are write-once by pipeline policy. Re-runs reuse the same digest;
-        # refuse to overwrite a tag that already points to different image contents.
-        try:
-            remote = json.loads(run('docker', 'buildx', 'imagetools', 'inspect', tag, '--format', '{{json .Manifest}}'))
-        except subprocess.CalledProcessError:
-            remote = None
-        if remote:
-            raw = json.loads(run('docker', 'buildx', 'imagetools', 'inspect', tag, '--raw'))
-            local_id = run('docker', 'image', 'inspect', tag, '--format', '{{.Id}}')
-            if raw.get('config', {}).get('digest') != local_id:
-                raise SystemExit('Refusing to overwrite an existing commit tag with different contents')
-        else:
-            subprocess.run(['docker', 'push', tag], check=True)
-            remote = json.loads(run('docker', 'buildx', 'imagetools', 'inspect', tag, '--format', '{{json .Manifest}}'))
-        digest = remote['digest']
-        if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest):
-            raise SystemExit('Registry did not return an image digest')
-        # Verify the registry reference is independently addressable by that digest.
-        run('docker', 'buildx', 'imagetools', 'inspect', f'{tag.split(":")[0]}@{digest}')
-        digests[role] = digest
-        print(f'Published/verified {tag} @ {digest}', flush=True)
+        digests[role] = publish_image(tag)
+        print(f'Published/verified {tag} @ {digests[role]}', flush=True)
     args.digests.write_text(json.dumps(digests) + '\n')

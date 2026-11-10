@@ -114,7 +114,7 @@ jobs:
         run: |
           python3 scripts/release.py --repository "$REPOSITORY" --commit "$RELEASE_SHA" --digests "$RUNNER_TEMP/digests.json" --output "$RUNNER_TEMP/release"
           tar -czf "$RUNNER_TEMP/taskforge-release.tar.gz" -C "$RUNNER_TEMP/release" .
-          sha256sum "$RUNNER_TEMP/taskforge-release.tar.gz" > "$RUNNER_TEMP/taskforge-release.tar.gz.sha256"
+          (cd "$RUNNER_TEMP" && sha256sum taskforge-release.tar.gz > taskforge-release.tar.gz.sha256)
           cat "$RUNNER_TEMP/release/release.json" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
