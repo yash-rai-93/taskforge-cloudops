@@ -157,8 +157,16 @@ main() {
     mount_data_disk "$device"
     install_docker
 
+    # Keep on-disk release ownership stable when Terraform replaces the host.
+    if ! getent group deploy >/dev/null; then
+        groupadd --gid 1900 deploy
+    fi
     if ! id deploy >/dev/null 2>&1; then
-        useradd --create-home --user-group --shell /bin/bash deploy
+        useradd --create-home --uid 1900 --gid deploy --shell /bin/bash deploy
+    fi
+    if [[ $(id -u deploy) != 1900 || $(id -g deploy) != 1900 ]]; then
+        echo "Existing deploy account does not match the persistent disk ownership" >&2
+        return 1
     fi
     passwd -l deploy
     usermod -aG docker deploy

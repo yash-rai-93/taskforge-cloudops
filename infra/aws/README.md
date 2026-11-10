@@ -91,7 +91,8 @@ is missing. Docker's signed apt repository supplies the engine and Compose
 plugin. Docker data, PostgreSQL and Redis volumes, and release directories live
 on the separate disk.
 
-The `deploy` user owns `/srv/taskforge/deploy` and can run Docker. Docker access
+The `deploy` user owns `/srv/taskforge/deploy` and can run Docker. UID and GID
+1900 preserve ownership when the host is replaced. Docker access
 is equivalent to host administration. Treat the deployment key and the SSM
 operator role accordingly. SSH password authentication and root SSH login are
 disabled. Bootstrap leaves authorized keys empty. App credentials, registry
@@ -137,7 +138,9 @@ verified.
 
 The data volume survives instance replacement and is protected by Terraform
 `prevent_destroy`. The root volume is deleted on termination. A bootstrap or AMI
-change replaces the host, so review the plan and schedule downtime. Keep
+change replaces the host, so review the plan and schedule downtime. Reinstall
+any host-local SSH authorization and registry login, and verify the replacement
+host key before re-enabling direct SSH delivery. Keep
 database backups and test restoration separately. Disk retention is not a backup.
 If decommissioning the stack, verify the backup and explicitly review removal of
 the data-volume deletion guard. Release the Elastic IP when the stack is retired.
