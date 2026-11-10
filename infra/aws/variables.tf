@@ -77,3 +77,15 @@ variable "ssh_ipv4_cidrs" {
     error_message = "SSH CIDRs must be valid IPv4 networks with /24 through /32 prefixes."
   }
 }
+
+variable "enable_ssm_cd" {
+  type        = bool
+  description = "Opt in to the GitHub production OIDC provider and instance-scoped Session Manager role."
+  default     = false
+}
+
+variable "enable_smtp_egress" {
+  type        = bool
+  description = "Allow encrypted SMTP submission on TCP 465 for a configured production mail provider."
+  default     = false
+}

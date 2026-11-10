@@ -26,6 +26,18 @@ printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$PRIVATE_DIR/known_hosts"
 chmod 600 "$PRIVATE_DIR/key" "$PRIVATE_DIR/known_hosts"
 unset DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS
 SSH_OPTIONS=(-i "$PRIVATE_DIR/key" -o IdentitiesOnly=yes -o IdentityAgent=none -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$PRIVATE_DIR/known_hosts" -o ConnectTimeout=15)
+case "${DEPLOY_TRANSPORT:-ssh}" in
+    ssh) ;;
+    ssm)
+        [[ "$DEPLOY_HOST" =~ ^i-[0-9a-f]{17}$ ]] || { echo 'SSM requires an EC2 instance ID in DEPLOY_HOST' >&2; exit 1; }
+        [[ "${AWS_REGION:-}" =~ ^[a-z]{2}(-[a-z]+)+-[0-9]+$ ]] || { echo 'SSM requires a valid AWS region' >&2; exit 1; }
+        command -v aws >/dev/null
+        command -v session-manager-plugin >/dev/null
+        # The validated instance ID and region cannot introduce shell syntax.
+        SSH_OPTIONS+=(-o "ProxyCommand=aws ssm start-session --region $AWS_REGION --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p")
+        ;;
+    *) echo 'DEPLOY_TRANSPORT must be ssh or ssm' >&2; exit 1 ;;
+esac
 TARGET="$DEPLOY_USER@$DEPLOY_HOST"
 # Values interpolated into the remote shell are strictly validated above.
 INCOMING="$DEPLOY_ROOT/incoming/$RELEASE_SHA-${GITHUB_RUN_ID:-manual}-${GITHUB_RUN_ATTEMPT:-1}"
@@ -59,10 +71,16 @@ shutil.rmtree(incoming)
 PY
 REMOTE_SCRIPT="$DEPLOY_ROOT/releases/$RELEASE_SHA/scripts/deploy.py"
 ssh "${SSH_OPTIONS[@]}" "$TARGET" "python3 -B '$REMOTE_SCRIPT' --root '$DEPLOY_ROOT' --repository '$REPOSITORY' --release '$DEPLOY_ROOT/releases/$RELEASE_SHA'"
-if ! HTTP_STATUS=$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 --max-time 15 \
-    --output "$PRIVATE_DIR/health.json" --write-out '%{http_code}' "$PRODUCTION_URL/health") ||
-    [[ "$HTTP_STATUS" != 200 ]] ||
-    ! python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(d.get("data",d).get("status") != "ok")' "$PRIVATE_DIR/health.json" 2>/dev/null; then
+probe() {
+    local path="$1" output="$2" status
+    status=$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 --max-time 15 \
+        --output "$output" --write-out '%{http_code}' "$PRODUCTION_URL$path") || return 1
+    [[ "$status" == 200 ]]
+}
+if ! probe /health "$PRIVATE_DIR/health.json" ||
+    ! python3 -B -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(d.get("data",d).get("status") != "ok")' "$PRIVATE_DIR/health.json" 2>/dev/null ||
+    ! probe /login "$PRIVATE_DIR/login.html" ||
+    ! grep -Fq '/_next/static/' "$PRIVATE_DIR/login.html"; then
     echo 'Public HTTPS verification failed; attempting previous application release' >&2
     ssh "${SSH_OPTIONS[@]}" "$TARGET" "python3 -B '$REMOTE_SCRIPT' --root '$DEPLOY_ROOT' --repository '$REPOSITORY' --rollback"
     exit 1

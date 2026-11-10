@@ -92,6 +92,10 @@ assessment's required automatic delivery.
 
 ## EC2 prerequisites and recovery
 
+Use the [production runbook](PRODUCTION.md) for the SSM transport, OIDC trust,
+TLS, and end-to-end verification. Direct SSH remains available for an approved
+static-egress runner.
+
 The [Terraform and bootstrap guide](../infra/aws/README.md) covers host setup,
 validation, cost and the approval step. Use its persistent deploy root
 `/srv/taskforge/deploy` for that host.

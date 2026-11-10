@@ -66,3 +66,34 @@ run "reject_public_ssh" {
 
   expect_failures = [var.ssh_ipv4_cidrs]
 }
+
+run "opt_in_ssm_delivery" {
+  command = plan
+
+  variables {
+    enable_ssm_cd = true
+  }
+
+  assert {
+    condition     = length(aws_iam_openid_connect_provider.github) == 1 && length(aws_iam_role.github_deploy) == 1 && length(aws_iam_role_policy.github_deploy) == 1
+    error_message = "SSM delivery must create the provider and scoped deploy role only when enabled."
+  }
+
+  assert {
+    condition     = length(aws_vpc_security_group_ingress_rule.ssh) == 0
+    error_message = "SSM delivery must not enable inbound SSH."
+  }
+}
+
+run "optional_encrypted_smtp" {
+  command = plan
+
+  variables {
+    enable_smtp_egress = true
+  }
+
+  assert {
+    condition     = aws_vpc_security_group_egress_rule.smtp[0].from_port == 465 && aws_vpc_security_group_egress_rule.smtp[0].to_port == 465
+    error_message = "SMTP egress must be limited to implicit TLS submission."
+  }
+}

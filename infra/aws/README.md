@@ -128,9 +128,9 @@ health and the real job flow before enabling production delivery.
 
 For the existing direct SSH workflow, give a trusted static-egress deployment
 runner an approved narrow CIDR, install its public key through SSM and verify
-the new host fingerprint through SSM before adding it to GitHub. GitHub-hosted
-runners with changing egress need a separate transport decision, such as an
-SSM-based workflow. Keep `AWS_DEPLOY_ENABLED` unset until the runner route,
+the new host fingerprint through SSM before adding it to GitHub. For GitHub-hosted runners, use the opt-in SSM transport documented in the
+[production runbook](../../docs/PRODUCTION.md). That path keeps inbound SSH
+closed. Keep `AWS_DEPLOY_ENABLED` unset until the runner route,
 DNS, TLS, registry access, production environment and first healthy rollout are
 verified.
 

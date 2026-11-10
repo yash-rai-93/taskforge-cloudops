@@ -74,7 +74,7 @@ jobs:
           docker run --rm -v "$PWD:/repo" -w /repo "$(cat .github/actionlint-image)" -color
       - name: Check deployment shell syntax
         run: |
-          for script in scripts/deploy.sh scripts/rollback.sh scripts/deploy-remote.sh; do bash -n "$script"; done
+          for script in scripts/deploy.sh scripts/rollback.sh scripts/deploy-remote.sh scripts/install-session-manager-plugin.sh; do bash -n "$script"; done
   containers:
     name: Container verification
     uses: ./.github/workflows/containers.yml
@@ -135,6 +135,9 @@ jobs:
       url: ${{ vars.PRODUCTION_URL }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     concurrency:
       group: production-deployment
       cancel-in-progress: false
@@ -146,8 +149,21 @@ jobs:
         with:
           name: taskforge-release-${{ github.sha }}
           path: release-artifact
+      - name: Install verified Session Manager plugin
+        if: vars.DEPLOY_TRANSPORT == 'ssm'
+        run: bash scripts/install-session-manager-plugin.sh
+      - name: Assume the production deployment role
+        if: vars.DEPLOY_TRANSPORT == 'ssm'
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          aws-region: ${{ vars.AWS_DEPLOY_REGION }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: taskforge-cd-${{ github.run_id }}-${{ github.run_attempt }}
+          role-duration-seconds: 1800
       - name: Transfer verified bundle and deploy over pinned SSH
         env:
+          DEPLOY_TRANSPORT: ${{ vars.DEPLOY_TRANSPORT }}
+          AWS_REGION: ${{ vars.AWS_DEPLOY_REGION }}
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
