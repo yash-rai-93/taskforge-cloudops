@@ -161,24 +161,15 @@ containerized stack at the same time.
 
 ## Production preparation
 
-Use **only** `docker-compose.prod.yml`; do not overlay it on the local file.
-Copy `.env.production.example` to a private mode-600 environment file and set
-required credentials and three already-published SHA image tags. The image
-contracts are `${IMAGE_NAMESPACE}-api`, `-worker` and `-frontend`. This milestone
-does not publish those three packages or assert that they are available in GHCR.
-
-```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml config --quiet
-# After the registry publishing milestone and private configuration are ready:
-docker compose --env-file .env.production -f docker-compose.prod.yml pull
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --wait --wait-timeout 180
-```
+Use the production Compose file and image override from a release bundle. The
+[CI/CD guide](CI_CD.md) explains GHCR package access, host setup, and the deployment
+command. Keep `.env.production` private and fill the settings from the example.
+The bundle pins API, worker, frontend and migration to the tested image digests.
 
 Production has the full frontend/proxy/API/worker/migration/database/Redis
 topology, private DB/Redis networking and no development ports or inbox. Only
 Nginx's configured HTTP port is published. HTTPS termination, approved EC2
-resources/costs/security groups, IAM, backups, monitoring, automated deployment
-and tested rollback remain separate work. Do not expose this HTTP preparation
+resources, ingress controls, backups and monitoring require host setup. Do not expose this HTTP preparation
 publicly with real credentials before HTTPS and AWS access controls are ready.
 Database passwords in an env file are visible to host/Docker administrators;
 file permissions and a trusted host are required. The initial PostgreSQL role
@@ -187,10 +178,9 @@ are an additional hardening task before wider production use.
 
 ## Verification and troubleshooting
 
-The workspace lacks Docker Engine and its socket. Actual builds/runs are handled
-by `.github/workflows/containers.yml` on an isolated GitHub-hosted Docker runner.
-Read that PR check's result before treating these runtime assertions as passed.
-No registry authentication, publishing or cloud deployment occurs in that workflow.
+The reusable `.github/workflows/containers.yml` runs on GitHub-hosted Docker
+runners. It builds the three images once and tests those image archives before
+`ci.yml` can publish them on a main push. See the PR checks for runtime results.
 
 The workflow builds all three images and exercises:
 
@@ -202,7 +192,9 @@ The workflow builds all three images and exercises:
 - Chromium login, actual UI task submission, Socket.IO WebSocket upgrade and the
   displayed asynchronous result, with all browser requests using the proxy origin;
 - the standalone production topology with locally tagged SHA images, newly
-  generated secrets, fresh migrations, no inbox and no published DB/Redis ports.
+  generated secrets, fresh migrations, no inbox and no published DB/Redis ports;
+- digest-pinned deployment through a disposable registry, a broken worker,
+  automatic application rollback and PostgreSQL data survival.
 
 The smoke scripts intentionally stop/recreate containers. They require
 COMPOSE_SMOKE_TEST=true and a disposable taskforge-ci-* project. Never point them
