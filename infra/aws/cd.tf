@@ -38,7 +38,8 @@ resource "aws_iam_role_policy" "github_deploy" {
         Action   = "ssm:StartSession"
         Resource = aws_instance.host.arn
         Condition = {
-          Bool = { "ssm:SessionDocumentAccessCheck" = "true" }
+          # The instance authorization request can omit the document check key.
+          BoolIfExists = { "ssm:SessionDocumentAccessCheck" = "true" }
         }
       },
       {
