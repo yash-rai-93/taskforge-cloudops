@@ -1,361 +1,288 @@
-![TaskForge Dashboard](screenshots/dashboard/1.png)
+# TaskForge CloudOps
 
-# TaskForge — Multi-Tenant SaaS Project Management Platform
+TaskForge CloudOps is a full-stack DevOps assessment project built on the open-source TaskForge application. It runs a Next.js frontend, NestJS API and dedicated BullMQ worker with PostgreSQL and Redis, using Docker Compose on an independently provisioned AWS EC2 instance.
 
-TaskForge is an open-source SaaS project management starter built with **Next.js, NestJS, PostgreSQL, Redis, Socket.IO, Stripe, Docker, and CI/CD**.
+[Live application](https://13.205.250.123/login) · [v2.0.0 release](https://github.com/yash-rai-93/taskforge-cloudops/releases/tag/v2.0.0) · [Verified automated deployment](https://github.com/yash-rai-93/taskforge-cloudops/actions/runs/42828875258)
 
-It includes organization-based multi-tenancy, role-based access control, Kanban task management, real-time notifications, email workflows, billing architecture, and a polished dashboard UI.
+## Release and verification status
 
-## VEGAH assessment preparation
+Version `v2.0.0` points to `400c8effe8583956cc1ef4a23dc192f85bb6db2c`. On 10 November 2026, the main workflow built, tested, published and deployed this commit successfully on its first attempt. GitHub Actions verified the public HTTPS login page and API. Independent EC2 checks confirmed that the running frontend, API and worker digests matched the release manifest and that all six long-running containers were healthy.
 
-This repository is [yash-rai-93/taskforge-cloudops](https://github.com/yash-rai-93/taskforge-cloudops),
-using [engmaryamameen/TaskForge](https://github.com/engmaryamameen/TaskForge) as its starter.
-The application features and screenshots below are inherited. Our assessment work
-adds independent configuration, dependency remediation and complete containerization.
-An AWS deployment URL has not been verified.
+Production SMTP is currently disabled. Sign-in requires a verified account, so assessment demonstrations use a privately provisioned demo account. Public registration, password-reset email and invitations require SMTP configuration before they can be used normally. Credentials and verification links are kept out of this repository.
 
-**Run the entire application:** `docker compose up -d --build --wait --wait-timeout 180`
+## Project scope and attribution
 
-Open **http://localhost:8080** and use the local verification inbox at
-**http://localhost:8025** after registration. No real email account is needed.
+The starter application comes from [engmaryamameen/TaskForge](https://github.com/engmaryamameen/TaskForge). Its project management interface, organizations, authentication, role-based access, tasks, notifications and billing architecture are inherited.
 
-See [container operations and architecture](docs/CONTAINERS.md) for services,
-production preparation, environment settings, host development and verification.
-Open a project and use **Project summary** to see a Redis/BullMQ job's real status,
-progress, retries and result. See [background jobs](docs/BACKGROUND_JOBS.md) for API,
-retention, security and a short walkthrough sequence.
+This fork adds independent environment configuration, dependency remediation, complete containerization, a user-visible project summary queue, GHCR release automation, Terraform infrastructure, EC2 bootstrapping, HTTPS deployment, health monitoring, backups and recovery verification. The upstream copyright and [MIT license](LICENSE) are retained.
 
-The [configuration audit](docs/VEGAH_CONFIGURATION_AUDIT.md) records the preceding
-milestone. The [CI/CD guide](docs/CI_CD.md) covers checks, three-image GHCR
-releases, digest-pinned deployment bundles and the settings needed for EC2.
+![Inherited TaskForge dashboard](screenshots/dashboard/1.png)
 
----
+## Architecture
 
-## Why This Project Stands Out
-
-- **Multi-tenant SaaS architecture** — organization-scoped data isolation
-- **Role-based access control** — Admin / Member with guard chain enforcement
-- **Kanban board** with drag-and-drop tasks using dnd-kit
-- **Real-time notifications** using Socket.IO
-- **Email notifications** using Nodemailer
-- **Stripe subscription billing** structure
-- **JWT auth** with refresh token rotation and theft detection
-- **PostgreSQL + Redis** backend architecture
-- **Docker-based** local and production setup
-- **CI/CD pipeline** with GitHub Actions
-
----
-
-## Screenshots
-
-### Dashboard & Analytics
-
-**Overview** — Stats cards, task flow over time, and status mix.
-
-![Dashboard overview with metrics and charts](screenshots/dashboard/1.png)
-
-**Operational view** — Workflow health, activity feed, priority mix, deadlines, and "My work."
-
-![Dashboard with workflow health and activity](screenshots/dashboard/2.png)
-
-### Kanban Board
-
-![Kanban task board](screenshots/dashboard/tasks.png)
-
-### Projects
-
-**Project grid** — Workspace projects with search and card layout.
-
-![Projects grid](screenshots/dashboard/projects.png)
-
-**Project detail** — Single project header with board/table switcher and Kanban columns.
-
-![Project detail board view](screenshots/dashboard/project-detail.png)
-
-### Organization Members
-
-**Organizations** — Active workspace, metadata, and team access summary.
-
-![Organizations workspace](screenshots/dashboard/organization.png)
-
-**Team roster** — Members and pending invitations with role badges.
-
-![Team members and invitations](screenshots/dashboard/organization-2.png)
-
-**Invite member** — Modal with email, role, and send invitation.
-
-![Invite member modal](screenshots/dashboard/send-invitation.png)
-
-### Real-Time Notifications
-
-![Notification dropdown](screenshots/dashboard/notifications.png)
-
-### Authentication
-
-Split-panel auth with shared branding.
-
-![Login](screenshots/auth/login.png)
-
-![Create workspace — registration](screenshots/auth/register.png)
-
-![Forgot password](screenshots/auth/forgot-password.png)
-
-### Mobile & Responsive
-
-![Mobile dashboard](screenshots/mobile-view/dashboard.png)
-![Mobile project list](screenshots/mobile-view/project-list.png)
-![Mobile project detail](screenshots/mobile-view/project-detail.png)
-![Mobile organizations](screenshots/mobile-view/organization.png)
-
----
-
-## Use TaskForge as a Reference For
-
-- Building multi-tenant SaaS apps
-- Structuring a Next.js + NestJS monorepo
-- Implementing organization-based RBAC
-- Adding real-time notifications with Socket.IO
-- Designing project/task management workflows
-- Integrating Stripe billing architecture
-- Setting up Docker and CI/CD for full-stack apps
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS 4 |
-| **State** | Zustand (client state), TanStack React Query (server state) |
-| **Realtime Client** | Socket.IO Client |
-| **Drag & Drop** | dnd-kit |
-| **Backend** | NestJS 11, TypeScript |
-| **Database** | PostgreSQL 16, TypeORM |
-| **Cache** | Redis 7, ioredis |
-| **Queue** | BullMQ (separate worker process) |
-| **WebSocket** | Socket.IO via NestJS Gateway |
-| **Email** | Nodemailer with SMTP |
-| **Billing** | Stripe SDK v22 |
-| **Auth** | JWT + Passport + argon2 |
-| **Logging** | Pino (structured JSON) |
-
----
-
-## Project Structure
-
-```
-TaskForge/
-├── frontend/                    # Next.js 15 App Router
-│   └── src/
-│       ├── app/                 # Pages (auth, dashboard)
-│       ├── components/          # UI components + layout
-│       ├── features/            # Feature modules (tasks, projects, orgs)
-│       ├── hooks/               # Shared hooks
-│       ├── lib/                 # API client, utils, socket
-│       ├── store/               # Zustand stores
-│       └── types/               # TypeScript interfaces
-│
-├── backend/                     # NestJS 11 API
-│   └── src/
-│       ├── modules/
-│       │   ├── auth/            # JWT, refresh tokens, login/register
-│       │   ├── users/           # User management
-│       │   ├── organizations/   # Multi-tenant orgs, memberships, invites
-│       │   ├── projects/        # Project CRUD
-│       │   ├── tasks/           # Task CRUD with assignment
-│       │   ├── activity/        # Audit logging
-│       │   ├── realtime/        # WebSocket gateway
-│       │   ├── notifications/   # In-app notification system
-│       │   ├── mail/            # Nodemailer email service
-│       │   ├── billing/         # Stripe subscriptions
-│       │   └── health/          # Health checks
-│       ├── infrastructure/      # Database, Redis, Queue
-│       ├── common/              # Guards, filters, decorators
-│       └── shared/              # Enums, interfaces, errors│
+```mermaid
+flowchart TD
+    Browser["Browser"] --> Caddy["Caddy on EC2 · HTTPS 443"]
+    Caddy --> Nginx["Nginx container · loopback 8080"]
+    Nginx --> Frontend["Next.js container"]
+    Nginx --> API["NestJS API container"]
+    API --> DB["PostgreSQL container · EBS volume"]
+    API --> Redis["Redis container · AOF volume"]
+    Redis --> Worker["Dedicated BullMQ worker"]
+    Worker --> DB
 ```
 
----
+The public proxy handles page requests, API routing and WebSockets on one origin. PostgreSQL and Redis use the internal Compose network. Only HTTP and HTTPS are admitted by the EC2 security group. Administration and deployment use AWS Systems Manager.
 
-## Getting Started
+| Component | Implementation |
+| --- | --- |
+| Frontend | Next.js 15, React 19, TypeScript |
+| API | NestJS 11, TypeORM, JWT authentication |
+| Background processing | BullMQ with a separate worker process |
+| Database | PostgreSQL 16 with a persistent Docker volume |
+| Queue storage | Redis 7 with authentication, AOF and no eviction |
+| Container runtime | Docker Engine and Docker Compose on Ubuntu EC2 |
+| HTTPS | Host Caddy proxy with a trusted IP certificate |
+| Infrastructure | Terraform, dedicated VPC, public subnet, encrypted EBS and Elastic IP |
+| Delivery | GitHub Actions, GHCR, SHA tags and digest-pinned deployment bundles |
 
-### Prerequisites
-- Node.js 22+ (for host development; Docker includes Node)
-- PostgreSQL 16+
-- Redis 7+
+## Run locally
 
-### Backend Setup
-
-For host-based development, start PostgreSQL and Redis using the local Compose file
-from the repository root (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis mailpit`), or use your own local
-services. The support-service ports bind to loopback only. Local passwords and JWT
-examples are synthetic and must never be used for a public deployment.
+Install Git and Docker Engine with Compose v2.24 or later, or Docker Desktop with Compose.
 
 ```bash
+git clone https://github.com/yash-rai-93/taskforge-cloudops.git
+cd taskforge-cloudops
+docker compose up -d --build --wait --wait-timeout 180
+```
+
+1. Open http://localhost:8080.
+2. Register an account.
+3. Open the local Mailpit inbox at http://localhost:8025 and follow the verification link.
+4. Create a project and tasks, then use **Project summary → Generate summary**.
+
+The local Compose stack supplies synthetic development credentials. Mailpit captures local email. Application images include their Node runtime, so host Node.js is optional for this path.
+
+```bash
+docker compose ps -a
+docker compose logs --tail 80 api worker frontend nginx
+docker compose down
+```
+
+Normal `docker compose down` retains the data volumes. Adding `-v` deletes the volumes and their data.
+
+### Develop outside the application containers
+
+Use Node.js 22 and separate terminals for the API, worker and frontend. Start supporting services from the repository root.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis mailpit
+```
+
+Configure the examples for the local ports, then start each process.
+
+```bash
+# API terminal
 cd backend
-cp .env.example .env          # Edit with your credentials
+cp .env.example .env
 npm ci
-npm run migration:run         # Create database tables
-npm run start:dev             # Start API on port 3000
-npm run start:worker:dev      # Start background worker (separate terminal)
+npm run migration:run
+npm run start:dev
 ```
 
-### Frontend Setup
+```bash
+# Separate worker terminal
+cd backend
+npm run start:worker:dev
+```
 
 ```bash
+# Frontend terminal
 cd frontend
 cp .env.local.example .env.local
 npm ci
-npm run dev                   # Start on port 3001
+npm run dev
 ```
 
-### Access the App
+Open http://localhost:3001 for this development mode. Complete email verification through the local Mailpit inbox.
 
-1. Open `http://localhost:3001`
-2. Register a new account
-3. Create an organization
-4. Start creating projects and tasks
+## Services and readiness
 
----
+| Service | Build or image | Readiness and lifecycle |
+| --- | --- | --- |
+| frontend | `frontend/Dockerfile` | Next.js login-page health check |
+| api | `backend/Dockerfile` | Health endpoint checks PostgreSQL and Redis |
+| worker | `backend/Dockerfile.worker` | Heartbeat checks both queue consumers and dependencies |
+| migrate | API image with migration command | One-shot migration before application startup |
+| postgres | PostgreSQL 16 Alpine | Persistent volume and `pg_isready` |
+| redis | Redis 7 Alpine | Authenticated PING and persistent AOF |
+| nginx | Unprivileged Nginx image | Proxy health check after application readiness |
+| mailpit | Local development only | Captures signup and other emails |
 
-## Environment Variables
+Production application containers use restart policies, non-root images, read-only filesystems, dropped capabilities and bounded logs. A health check marks an unhealthy container. A restart policy handles eligible process exits, so a running but unhealthy process still needs diagnosis.
 
-- Backend host development: copy `backend/.env.example` to `backend/.env`.
-- Frontend development: copy `frontend/.env.local.example` to `frontend/.env.local`.
-- Future EC2 preparation: copy `.env.production.example` to `.env.production`, set
-  file permissions to `600`, and fill the required blanks privately. Do not run the
-  production stack until all three images are published and private configuration is ready.
+## Environment configuration
 
-NestJS expects the existing `DB_*`, `REDIS_*`, `JWT_SECRET`, `FRONTEND_URL`, and optional
-integration keys. Production Compose requires database/Redis passwords and a JWT secret;
-it provides no default production credentials or `latest` image tag.
-`NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SOCKET_URL` are public **build-time** origins;
-changing a running container's environment does not change the browser bundle.
-Neither origin should include `/api/v1` or `/socket.io`. Empty values currently use
-the browser origin through Nginx. See the container guide for the full contract.
+| File | Purpose |
+| --- | --- |
+| `.env.example` | Optional local Compose overrides |
+| `backend/.env.example` | API and worker host development |
+| `frontend/.env.local.example` | Frontend host development |
+| `.env.production.example` | Production configuration template |
 
-Stripe can be left blank to disable paid billing. Local Compose uses Mailpit for signup verification. Production
-signup requires configured email delivery; no Mailpit inbox is included there. Do not use or publish verification/reset links from preview logs.
+| Variables | Purpose |
+| --- | --- |
+| `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | PostgreSQL database and credentials |
+| `DB_HOST`, `DB_PORT` | Production Compose fixes these to its internal database service |
+| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Queue connection and authentication |
+| `JWT_SECRET` | Unique signing secret, at least 32 characters |
+| `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL` | Authentication token lifetimes |
+| `FRONTEND_URL` | Public browser origin and email-link origin |
+| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SOCKET_URL` | Public frontend build-time origins |
+| `IMAGE_NAMESPACE`, `API_IMAGE_TAG`, `WORKER_IMAGE_TAG`, `FRONTEND_IMAGE_TAG` | Image namespace and commit versions |
+| `HTTP_PORT` | Production proxy binding, `127.0.0.1:8080` |
+| `SMTP_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Optional transactional email delivery |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_PRO`, `STRIPE_PRICE_ID_ENTERPRISE` | Optional billing integration |
 
----
+Blank public API and socket origins select same-origin routing. Explicit values contain an origin without `/api/v1` or `/socket.io`. Next.js embeds public variables when the frontend is built, so changing them requires a rebuilt image.
 
-## Email Notification Setup
+Store production secrets in `/srv/taskforge/deploy/.env.production`, owned by `deploy` with mode `600`. Supply independently generated database, Redis and JWT secrets. The deployment bundle supplies the release image metadata. Keep real environment files, credentials and Terraform state out of Git.
 
-### Using Nodemailer with SMTP
+## Demonstrate a real background job
 
-TaskForge uses Nodemailer for transactional emails. Configure SMTP credentials in your backend `.env`:
+Open a project and click **Generate summary**. The API checks authentication and organization/project access, then adds a `project-summary` job to the Redis-backed `project-reports` queue. The worker reads a PostgreSQL snapshot, aggregates task counts and updates progress at actual processing boundaries. The frontend polls the API for queue state and the returned summary.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| POST | `/api/v1/projects/:projectId/reports` | Queue a summary and receive HTTP 202 with a job ID |
+| GET | `/api/v1/projects/:projectId/reports/:id` | Read actual state, progress and result |
+| GET | `/api/v1/health` | Check API dependencies |
+| GET | `/health` | Proxy-accessible API health route |
+
+Reports require a JWT and organization context through `x-organization-id`. Job access also checks the requesting user and project. Transient failures use three attempts with exponential backoff. Completed results are eligible for cleanup after 24 hours or beyond 1,000 retained jobs. Failed results have a seven-day retention policy.
+
+For a local recovery demonstration, stop the worker, submit a report and observe **Queued**. Start the worker and watch the report complete.
 
 ```bash
-SMTP_HOST=smtp.gmail.com      # Or any SMTP provider
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-SMTP_FROM=TaskForge <noreply@example.com>
+docker compose stop worker
+# Submit a report in the browser.
+docker compose start worker
 ```
 
-### Testing with Mailtrap/Ethereal
+See [background job design and tests](docs/BACKGROUND_JOBS.md) for authorization, failure behavior and retention details.
 
-For development, use [Mailtrap](https://mailtrap.io) or [Ethereal](https://ethereal.email):
+## CI/CD and image releases
+
+```mermaid
+flowchart TD
+    Change["PR or main push"] --> Checks["Lint, tests, audits and builds"]
+    Change --> Images["Build three cached images"]
+    Images --> Smoke["Compose, browser and rollback checks"]
+    Checks --> Gate["Successful main release"]
+    Smoke --> Gate
+    Gate --> GHCR["Publish tested images and release bundle"]
+    GHCR --> AWS["GitHub OIDC and SSM SSH tunnel"]
+    AWS --> Deploy["Pull digests, migrate and check health"]
+    Deploy --> Public["Verify public HTTPS"]
+```
+
+Pull requests validate changes. Successful pushes to `main` publish the tested image archives and deploy when `AWS_DEPLOY_ENABLED=true`. Buildx caches are separate for each image. Failed checks block publishing and deployment.
+
+| Component | Image tag |
+| --- | --- |
+| Frontend | `ghcr.io/yash-rai-93/taskforge-cloudops-frontend:<commit-sha>` |
+| API | `ghcr.io/yash-rai-93/taskforge-cloudops-api:<commit-sha>` |
+| Worker | `ghcr.io/yash-rai-93/taskforge-cloudops-worker:<commit-sha>` |
+
+Commit tags identify versions. Release manifests pin the images by SHA-256 digest, and the migration service uses the API digest. GitHub releases such as `v2.0.0` label a tested source commit. Production deployment uses that commit's image digests.
+
+The `production` GitHub environment contains the deployment destination, region, role ARN and public origin. Its two secrets are `DEPLOY_SSH_KEY` and `DEPLOY_KNOWN_HOSTS`. GitHub OIDC obtains temporary AWS credentials, while the dedicated SSH key authenticates the deployment account inside the SSM tunnel. Verify the host public key independently before configuring it.
+
+See [CI/CD configuration](docs/CI_CD.md) and [the production runbook](docs/PRODUCTION.md) for the complete variables and deployment procedure.
+
+## Reproduce the AWS deployment
+
+The Terraform baseline uses Ubuntu on a `t3.medium` in Mumbai, a dedicated VPC/subnet, an Elastic IP, a 12 GiB root disk and a 20 GiB data disk. Both disks are encrypted. Docker data lives under `/srv/taskforge/docker` on the data disk.
+
+1. Review the [Terraform guide](infra/aws/README.md), configure the expected AWS account and inspect the plan and costs.
+2. Provision the approved resources and confirm bootstrap, the data mount, Docker and Systems Manager readiness.
+3. Configure the private production environment and HTTPS proxy.
+4. Configure the GitHub production environment, its main-branch restriction and deployment credentials.
+5. Enable `AWS_DEPLOY_ENABLED`, merge a reviewed change and inspect the production job.
+6. Compare `current/release.json` with the running image digests and verify public HTTPS.
+
+The current deployment uses a trusted Let's Encrypt IP certificate. Caddy forwards to the loopback Nginx port and manages certificate renewal. See the runbook for the IP certificate configuration and the alternative of using an owned DNS name.
+
+Infrastructure creation incurs AWS charges. Review the documented baseline estimate and current account pricing before applying a new stack.
+
+## Monitoring, backups and recovery
+
+Five-minute systemd checks inspect all long-running containers, restart counts, the data mount, disk usage, backup freshness and HTTPS. Failures appear in the systemd journal. EC2 basic CloudWatch metrics provide CPU usage, CPU credits, network activity and instance status.
 
 ```bash
-SMTP_HOST=sandbox.smtp.mailtrap.io
-SMTP_PORT=2525
-SMTP_USER=your-mailtrap-user
-SMTP_PASS=your-mailtrap-pass
+sudo systemctl list-timers 'taskforge-*'
+sudo journalctl -u taskforge-check.service -u taskforge-backup.service --since today
+docker ps -a
+docker stats --no-stream
+sudo journalctl -u caddy --since today
 ```
 
-### Email Events
+PostgreSQL dumps run daily at 02:15 UTC. Archives are validated and kept for about seven days in the root-only `/srv/taskforge/backups` directory. The restore drill loads an archive into a temporary network-isolated PostgreSQL container and checks the restored project table.
 
-| Event | Email Sent To | Content |
-|-------|--------------|---------|
-| Admin invites a user | Invited email address | Invitation with accept link |
-| Task assigned to user | Assigned user's email | Task title, description, priority, due date |
-| Task reassigned | Newly assigned user | Same as above |
-
-When SMTP is not configured, emails are logged to console for development visibility.
-
----
-
-## WebSocket Notifications
-
-TaskForge uses Socket.IO for real-time notifications:
-
-1. **Connection**: Client connects with JWT token in handshake auth
-2. **Rooms**: Users join `user:{id}` (personal) and `org:{orgId}` (team) rooms
-3. **Events**: Domain events (task.created, task.updated, member.joined) broadcast to org rooms
-4. **Notifications**: Task assignments and member joins create persistent notifications
-5. **Frontend**: Bell icon with unread count, dropdown with notification list
-
----
-
-## API Endpoints
-
-### Authentication
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/auth/register` | Register new user |
-| POST | `/api/v1/auth/login` | Login |
-| POST | `/api/v1/auth/refresh` | Refresh tokens |
-| GET | `/api/v1/auth/me` | Get current user |
-| POST | `/api/v1/auth/logout` | Logout |
-
-### Organizations
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/organizations` | Create organization |
-| GET | `/api/v1/organizations` | List user's orgs |
-| POST | `/api/v1/organizations/switch` | Switch active org |
-| GET | `/api/v1/organizations/current` | Get current org |
-| GET | `/api/v1/organizations/members` | List org members |
-| POST | `/api/v1/organizations/invites` | Create invite (admin) |
-
-### Projects & Tasks
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/projects` | Create project |
-| GET | `/api/v1/projects` | List projects |
-| POST | `/api/v1/projects/{id}/tasks` | Create task |
-| GET | `/api/v1/tasks` | List all tasks |
-| PATCH | `/api/v1/tasks/{id}` | Update task |
-
-### Notifications
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/notifications` | List notifications |
-| GET | `/api/v1/notifications/unread-count` | Get unread count |
-| POST | `/api/v1/notifications/{id}/read` | Mark as read |
-| POST | `/api/v1/notifications/read-all` | Mark all as read |
-
----
-
-## Architecture Highlights
-
-### Request Flow
-```
-Client -> Next.js -> NestJS API
-                        |
-                   Guard Chain:
-                   Throttler -> JWT -> OrgMembership -> Roles
-                        |
-                   Service Layer -> PostgreSQL
-                        |
-                   Domain Event Bus
-                    /          \
-              BullMQ         Socket.IO
-              Queue          Broadcast
-                |
-              Worker
-           (audit log)
+```bash
+sudo /usr/local/lib/taskforge/production-ops.sh restore-check \
+  /srv/taskforge/backups/taskforge-YYYYMMDDTHHMMSSZ.dump
 ```
 
-### Multi-Tenant Isolation
-- Organization ID validated at guard layer, not query layer
-- Services read org context from validated request, never from user input
-- Membership checked with 3-tier cache for performance
+Select an actual archive filename before running the command. Local backups share the data disk with production data. Off-host backups and paging alerts remain future work.
 
-### Event-Driven Architecture
-- All mutations emit domain events
-- Events consumed by: Activity Logger, WebSocket Broadcaster, Notification Creator, Email Sender
-- Background worker processes audit log asynchronously
+A deployment validates its bundle, takes a lock, pulls images, runs migrations and waits for health checks. Failed application rollout attempts restore the previous healthy release. Public probe failure also triggers a rollback attempt. For an intentional operator rollback during a controlled window:
 
----
+```bash
+sudo -u deploy python3 -B /srv/taskforge/deploy/current/scripts/deploy.py \
+  --root /srv/taskforge/deploy \
+  --repository yash-rai-93/taskforge-cloudops \
+  --rollback
+```
+
+Application rollback retains data volumes and skips reverse migrations. Schema changes must remain compatible with the previous application, and a checked database backup is required before risky migrations.
+
+## Validation and assessment evidence
+
+| Requirement | Verified evidence |
+| --- | --- |
+| Containerization | Three images built in CI, complete Compose startup and service health checks |
+| CI/CD | [Main run 42828875258](https://github.com/yash-rai-93/taskforge-cloudops/actions/runs/42828875258) passed checks, publishing and automatic EC2 deployment |
+| AWS hosting | Public HTTPS verified by GitHub Actions, with matching running digests checked on EC2 |
+| Background jobs | Authenticated production report stayed queued during worker interruption and completed after restart |
+| Persistence and recovery | CI tested persistence and application rollback; a production PostgreSQL backup restored successfully in isolation |
+| Infrastructure | [Terraform and bootstrap validation](https://github.com/yash-rai-93/taskforge-cloudops/actions/runs/42828875207) passed |
+| Monitoring | Host check detected the stopped worker and returned to healthy after readiness recovered |
+
+Run application checks locally after installing dependencies:
+
+```bash
+(cd backend && npm ci && npm run lint:check && npm test -- --runInBand && npm run build)
+(cd frontend && npm ci && npm run type-check && npm run build)
+```
+
+Production authentication and reporting were exercised through the host HTTPS proxy. CI also exercised the browser interface in its disposable Compose stack. The public browser walkthrough remains a submission step. Production now retains a previous release, but a live production rollback has not been exercised.
+
+The assessment walkthrough must show the actual screen and remain below 180 seconds. Target 165–170 seconds and show the architecture, Docker configuration, successful pipeline, live report result, and recovery approach. Keep credentials and private logs out of the recording.
+
+## Documentation map
+
+- [Container setup and networking](docs/CONTAINERS.md)
+- [Background jobs](docs/BACKGROUND_JOBS.md)
+- [CI/CD and GHCR](docs/CI_CD.md)
+- [Production deployment and operations](docs/PRODUCTION.md)
+- [Terraform and bootstrap](infra/aws/README.md)
+- [Original configuration audit](docs/VEGAH_CONFIGURATION_AUDIT.md)
+
+## Limitations
+
+This is a single-instance deployment with brief interruptions possible during rollout. Production email delivery and paid billing are disabled. Local backups do not protect against losing the data disk, and monitoring currently has no external pager or log shipping. The verified production release is recorded above as dated evidence.
+
+## License
+
+Distributed under the [MIT license](LICENSE). Original TaskForge copyright belongs to engmaryamameen. This fork retains that attribution and documents the independent DevOps implementation.
