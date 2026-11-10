@@ -12,7 +12,10 @@ mounted=false
 
 lsblk() { printf '%s\n' "$disk_type"; }
 blkid() { printf '%s' "$filesystem"; }
-wipefs() { printf '%s' "$signature"; }
+wipefs() {
+    [[ "$*" == "--no-act --noheadings --output TYPE /dev/test-data" ]] || return 2
+    printf '%s' "$signature"
+}
 findmnt() { "$mounted"; }
 mkfs.ext4() {
     [[ "$*" == "-L taskforge-data /dev/test-data" ]]

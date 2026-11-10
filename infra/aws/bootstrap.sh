@@ -48,7 +48,7 @@ prepare_filesystem() {
                 echo "Refusing to format a mounted device" >&2
                 return 1
             fi
-            signatures=$(wipefs --no-act --noheadings -o TYPE "$device") || return 1
+            signatures=$(wipefs --no-act --noheadings --output TYPE "$device") || return 1
             if [[ -n "$signatures" ]]; then
                 echo "Refusing a disk with unrecognized signatures" >&2
                 return 1
