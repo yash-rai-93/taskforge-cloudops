@@ -26,7 +26,8 @@ progress, retries and result. See [background jobs](docs/BACKGROUND_JOBS.md) for
 retention, security and a short walkthrough sequence.
 
 The [configuration audit](docs/VEGAH_CONFIGURATION_AUDIT.md) records the preceding
-milestone. Three-image GHCR publishing, HTTPS and AWS deployment remain upcoming.
+milestone. The [CI/CD guide](docs/CI_CD.md) covers checks, three-image GHCR
+releases, digest-pinned deployment bundles and the settings needed for EC2.
 
 ---
 
