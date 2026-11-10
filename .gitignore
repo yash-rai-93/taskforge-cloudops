@@ -33,3 +33,13 @@ temp_interactive_push.bat
 .deploy.lock
 __pycache__/
 *.pyc
+
+# Terraform plugins, private settings and saved plans
+.terraform/
+*.tfplan
+*.tfplan.*
+*.tfvars.json
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
