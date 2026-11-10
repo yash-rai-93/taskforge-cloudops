@@ -147,6 +147,9 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
         NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-}
+    environment:
+      PUBLIC_DEMO_EMAIL: ${PUBLIC_DEMO_EMAIL:-}
+      PUBLIC_DEMO_PASSWORD: ${PUBLIC_DEMO_PASSWORD:-}
     networks:
     - edge
     depends_on:
