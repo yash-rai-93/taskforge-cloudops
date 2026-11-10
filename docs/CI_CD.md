@@ -92,6 +92,10 @@ assessment's required automatic delivery.
 
 ## EC2 prerequisites and recovery
 
+The [Terraform and bootstrap guide](../infra/aws/README.md) covers host setup,
+validation, cost and the approval step. Use its persistent deploy root
+`/srv/taskforge/deploy` for that host.
+
 Use an approved x86-64 Ubuntu 24.04 EC2 host with Docker Engine, the Compose plugin,
 Python 3.12 and OpenSSH. Provide a controlled SSH route from the deployment runner
 and verify the host key independently before setting `DEPLOY_KNOWN_HOSTS`. The

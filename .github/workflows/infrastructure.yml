@@ -1,0 +1,42 @@
+name: AWS infrastructure checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/aws/**'
+      - '.github/workflows/infrastructure.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/aws/**'
+      - '.github/workflows/infrastructure.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: Validate Terraform and bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/aws
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: 1.11.4
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform validate
+      - name: Review plans with a mocked AWS provider
+        run: terraform test -verbose -no-color
+      - name: Check bootstrap disk safety
+        run: |
+          bash -n bootstrap.sh
+          bash tests/bootstrap-test.sh
