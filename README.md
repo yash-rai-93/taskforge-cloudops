@@ -12,9 +12,9 @@ Production SMTP is currently disabled. Sign-in requires a verified account, so a
 
 ## Project scope and attribution
 
-The starter application comes from [engmaryamameen/TaskForge](https://github.com/engmaryamameen/TaskForge). Its project management interface, organizations, authentication, role-based access, tasks, notifications and billing architecture are inherited.
 
-This fork adds independent environment configuration, dependency remediation, complete containerization, a user-visible project summary queue, GHCR release automation, Terraform infrastructure, EC2 bootstrapping, HTTPS deployment, health monitoring, backups and recovery verification. The upstream copyright and [MIT license](LICENSE) are retained.
+
+
 
 ![Inherited TaskForge dashboard](screenshots/dashboard/1.png)
 
@@ -283,6 +283,4 @@ The assessment walkthrough must show the actual screen and remain below 180 seco
 
 This is a single-instance deployment with brief interruptions possible during rollout. Production email delivery and paid billing are disabled. Local backups do not protect against losing the data disk, and monitoring currently has no external pager or log shipping. The verified production release is recorded above as dated evidence.
 
-## License
 
-Distributed under the [MIT license](LICENSE). Original TaskForge copyright belongs to engmaryamameen. This fork retains that attribution and documents the independent DevOps implementation.
