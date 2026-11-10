@@ -178,8 +178,14 @@ PasswordAuthentication no
 KbdInteractiveAuthentication no
 AllowUsers deploy
 SSH
+    # Socket activation may not have started sshd or created its runtime directory yet.
+    install -d -m 0755 /run/sshd
     sshd -t
-    systemctl try-reload-or-restart ssh.service
+    if systemctl is-active --quiet ssh.service; then
+        systemctl reload ssh.service
+    elif ! systemctl is-active --quiet ssh.socket; then
+        systemctl enable --now ssh.service
+    fi
 
     [[ $(docker info --format '{{.DockerRootDir}}') == "$DOCKER_ROOT" ]]
     runuser -u deploy -- docker compose version
